@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Afterimage | Keep the last 20 seconds</title>
+    <meta name="description" content="Free Windows tray app for NVIDIA PCs. Press F8 to save the last 20 seconds of gameplay. No overlay. 1080p.">
+    <meta name="theme-color" content="#040506">
+    <link rel="canonical" href="https://afterimage-site.cohencool.workers.dev">
+    <meta property="og:title" content="Afterimage | Keep the last 20 seconds">
+    <meta property="og:description" content="Free Windows tray app. Press F8. The clip is already there.">
+    <meta property="og:url" content="https://afterimage-site.cohencool.workers.dev">
+    <meta property="og:image" content="https://afterimage-site.cohencool.workers.dev/assets/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:type" content="website">
+    <meta name="twitter:card" content="summary_large_image">
+    <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <div class="glow" aria-hidden="true"></div>
+    <header class="nav">
+      <a class="brand" href="/">
+        <img src="assets/favicon.svg" width="22" height="22" alt="">
+        Afterimage
+      </a>
+      <a class="nav-link" href="https://github.com/cococool13/afterimage">GitHub</a>
+    </header>
+
+    <main>
+      <section class="hero">
+        <p class="eyebrow">Windows · NVIDIA · Free</p>
+        <h1>Keep the last<br>20 seconds.</h1>
+        <p class="lede">Afterimage lives in the tray. Press F8 when something happens. The clip is already there. No overlay. A small beep.</p>
+        <div class="actions">
+          <a class="btn" href="https://github.com/cococool13/afterimage">Get Afterimage</a>
+          <span class="key" aria-hidden="true">F8</span>
+        </div>
+      </section>
+
+      <section class="steps">
+        <ol>
+          <li>
+            <span>01</span>
+            <h2>Leave it running</h2>
+            <p>One tray icon. One FFmpeg process. 1080p on the GPU.</p>
+          </li>
+          <li>
+            <span>02</span>
+            <h2>Play as usual</h2>
+            <p>Use borderless windowed. It remembers the last 15, 20, or 30 seconds.</p>
+          </li>
+          <li>
+            <span>03</span>
+            <h2>Press F8</h2>
+            <p>Files land in Videos\Afterimage as names like Sep 15 2.41 PM.mp4.</p>
+          </li>
+        </ol>
+      </section>
+
+      <section class="facts">
+        <ul>
+          <li>1080p60 NVENC</li>
+          <li>Game audio</li>
+          <li>Click the tray for settings</li>
+          <li>No account</li>
+        </ul>
+      </section>
+
+      <section class="faq">
+        <h2>Questions</h2>
+        <dl>
+          <div>
+            <dt>What do I need?</dt>
+            <dd>Windows 11, an NVIDIA GPU, and .NET 8 Desktop. Build on the Windows PC with the command in the repo.</dd>
+          </div>
+          <div>
+            <dt>Why is my clip black?</dt>
+            <dd>Exclusive fullscreen often captures black. Switch the game to borderless windowed.</dd>
+          </div>
+          <div>
+            <dt>F8 does nothing in game</dt>
+            <dd>If the game is running as Administrator, Afterimage must too.</dd>
+          </div>
+          <div>
+            <dt>Is it free?</dt>
+            <dd>Yes. Source is on GitHub. No telemetry.</dd>
+          </div>
+        </dl>
+      </section>
+    </main>
+
+    <footer>
+      <a class="btn" href="https://github.com/cococool13/afterimage">Get Afterimage</a>
+      <p>Made by Cohen. Free forever.</p>
+    </footer>
+  </body>
+</html>

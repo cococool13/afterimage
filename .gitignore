@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.idea/
+*.user
+*.suo
+publish/
+ffmpeg/
+.DS_Store
+site/node_modules/
+node_modules/

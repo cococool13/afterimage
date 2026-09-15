@@ -1,0 +1,43 @@
+# CLAUDE.md — Afterimage
+
+Personal Windows 11 NVIDIA replay clipper, now a public free app. Tray icon only. Left-click opens settings. F8 dumps the last 15/20/30 seconds to `Videos\Afterimage`. Beep on save, no overlay.
+
+Build and run the app on the Windows PC. A Mac can compile and run `Afterimage.Tests` and the marketing site.
+
+## Stack
+
+- .NET 8, `net8.0-windows`, WinForms tray + settings
+- FFmpeg `gfxcapture` 1920×1080 + `h264_nvenc` p1/ull
+- WASAPI loopback via NAudio
+- Resident processes: Afterimage.exe + one ffmpeg.exe
+- Site: Cloudflare Worker static assets (`site/`), worker name `afterimage-site`
+
+## Commands
+
+Windows:
+
+```powershell
+dotnet publish Afterimage.csproj -c Release -r win-x64 --self-contained false -o .\publish
+dotnet run --project Afterimage.Tests
+```
+
+Mac:
+
+```bash
+dotnet run --project Afterimage.Tests
+```
+
+Site:
+
+```bash
+cd site && npx wrangler deploy
+```
+
+## Gotchas
+
+1. Primary monitor. Exclusive fullscreen is often black — borderless windowed.
+2. No overlay or toast. Confirm with `Tick` only.
+3. F8 is a low-level hook. Elevated games need Afterimage elevated.
+4. Filenames: `Sep 15 2.41 PM.mp4` via `ClipName`.
+5. Visual language for the site is Raycast-locked (void black, ash CTA, ember as status only). Do not add a second accent on buttons.
+6. Out of scope: mic, multi-monitor picker, 120 fps, HDR, AMD/Intel encode, in-app hotkey editor.

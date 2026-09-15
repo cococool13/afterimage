@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Afterimage.Tests</RootNamespace>
+    <AssemblyName>Afterimage.Tests</AssemblyName>
+    <RollForward>LatestMajor</RollForward>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\SegmentPicker.cs" Link="SegmentPicker.cs" />
+    <Compile Include="..\ClipName.cs" Link="ClipName.cs" />
+  </ItemGroup>
+</Project>
