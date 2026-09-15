@@ -39,5 +39,5 @@ cd site && npx wrangler deploy
 2. No overlay or toast. Confirm with `Tick` only.
 3. F8 is a low-level hook. Elevated games need Afterimage elevated.
 4. Filenames: `Sep 15 2.41 PM.mp4` via `ClipName`.
-5. Visual language for the site is Raycast-locked (void black, ash CTA, ember as status only). Do not add a second accent on buttons.
+5. Site is a single no-scroll poster: Honk-locked sky `#254fb1`, sunshine wordmark `#ffe400`, white Download button. Do not add sections or a scrollbar.
 6. Out of scope: mic, multi-monitor picker, 120 fps, HDR, AMD/Intel encode, in-app hotkey editor.
