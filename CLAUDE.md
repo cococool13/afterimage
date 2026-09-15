@@ -10,7 +10,7 @@ Build and run the app on the Windows PC. A Mac can compile and run `Afterimage.T
 - FFmpeg `gfxcapture` 1920×1080 + `h264_nvenc` p1/ull
 - WASAPI loopback via NAudio
 - Resident processes: Afterimage.exe + one ffmpeg.exe
-- Site: Cloudflare Worker static assets (`site/`), worker name `afterimage-site`
+- Site: Cloudflare Worker static assets (`site/public/`), worker name `afterimage-site`
 
 ## Commands
 
