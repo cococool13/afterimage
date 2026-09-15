@@ -1,5 +1,9 @@
-*.md
+node_modules/
+.wrangler/
 package.json
 package-lock.json
-node_modules
+wrangler.jsonc
+*.md
 .DS_Store
+.git/
+.assetsignore
