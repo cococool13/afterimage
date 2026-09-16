@@ -11,6 +11,7 @@ sealed class Settings
     public bool Mic { get; set; }
     public string Quality { get; set; } = "fast";
     public bool Onboarded { get; set; }
+    public bool CapClips { get; set; } = true;
     public string ClipsFolder { get; set; } = DefaultClipsFolder();
 
     static string FilePath => Path.Combine(Paths.Root, "settings.json");

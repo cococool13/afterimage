@@ -30,6 +30,11 @@ sealed class App : ApplicationContext
         _rightMenu.Items.Add("Clip now", null, (_, _) => _ = SaveClip());
         _rightMenu.Items.Add("Open last clip", null, (_, _) => OpenLast());
         _rightMenu.Items.Add("Settings", null, (_, _) => ShowSettings());
+        if (!Admin.IsElevated)
+            _rightMenu.Items.Add("Run as administrator", null, (_, _) =>
+            {
+                if (Admin.TryRelaunchElevated()) ExitThread();
+            });
         _rightMenu.Items.Add("Quit", null, (_, _) => ExitThread());
 
         _tray = new NotifyIcon

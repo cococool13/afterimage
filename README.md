@@ -21,7 +21,9 @@ From this repo on a Windows PC:
 .\install.ps1
 ```
 
-Click the tray icon for settings. Change the hotkey, length, quality, and microphone there. **View clips** / **Open last** / recent files are in that window.
+Click the tray icon for settings. Change the hotkey, length, quality, and microphone there. **View clips** / **Open last** / recent files are in that window. Old clips are deleted past 50 files or 5 GB. If a game is running as Administrator, use **Run as administrator**.
+
+Signed releases need GitHub secrets `WINDOWS_CERT_PFX` (base64 PFX) and `WINDOWS_CERT_PASSWORD`. Without them the zip is unsigned and SmartScreen may warn once.
 
 Captures the game window, including exclusive fullscreen. NVENC runs only while a game is open. Status **Waiting** means the desktop is idle. If a title still comes out black, run Afterimage as Administrator (required when the game is elevated). Some anti-cheat will block any capture.
 

@@ -14,6 +14,8 @@ sealed class SettingsForm : Form
     readonly CheckBox _boot;
     readonly CheckBox _sound;
     readonly CheckBox _mic;
+    readonly CheckBox _cap;
+    readonly Button _admin;
     readonly Label _folder;
     readonly Label[] _recent;
     readonly System.Windows.Forms.Timer _tick;
@@ -31,7 +33,7 @@ sealed class SettingsForm : Form
         MinimizeBox = false;
         ShowInTaskbar = true;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(380, 700);
+        ClientSize = new Size(380, 760);
         BackColor = Theme.Canvas;
         ForeColor = Theme.Text;
         Font = Theme.Ui;
@@ -113,6 +115,10 @@ sealed class SettingsForm : Form
             if (_buffer.IsRunning) _buffer.Start();
         };
         Controls.Add(_mic);
+        y += 26;
+        _cap = Check("Delete old clips (50 / 5 GB)", 20, y, _settings.CapClips);
+        _cap.CheckedChanged += (_, _) => { _settings.CapClips = _cap.Checked; _settings.Save(); };
+        Controls.Add(_cap);
         y += 34;
         Controls.Add(Rule(y));
         y += 12;
@@ -156,6 +162,13 @@ sealed class SettingsForm : Form
             y += 20;
         }
         y += 10;
+        _admin = Ghost("Run as administrator", 20, y, 340);
+        _admin.Click += (_, _) =>
+        {
+            if (Admin.TryRelaunchElevated()) _quit();
+        };
+        Controls.Add(_admin);
+        y += 36;
         var quitBtn = Ghost("Quit Afterimage", 20, y, 340);
         quitBtn.Click += (_, _) => _quit();
         Controls.Add(quitBtn);
@@ -225,6 +238,8 @@ sealed class SettingsForm : Form
             : Title(_buffer.Status);
         _dot.BackColor = on ? Theme.Mint : _buffer.Armed ? Theme.Ash : Theme.Ember;
         _pause.Text = _buffer.Armed ? "Pause" : "Resume";
+        _admin.Visible = !Admin.IsElevated;
+        _admin.Text = _buffer.NeedsAdmin ? "Run as administrator (needed)" : "Run as administrator";
         _folder.Text = _settings.ClipsFolder;
         if (!_listen) _hotkey.Text = Hotkey.Label(_settings.HotkeyVk);
         PaintRecent();

@@ -10,7 +10,7 @@
     <RootNamespace>Afterimage</RootNamespace>
     <AssemblyName>Afterimage</AssemblyName>
     <Product>Afterimage</Product>
-    <Version>1.2.0</Version>
+    <Version>1.3.0</Version>
     <LangVersion>latest</LangVersion>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>

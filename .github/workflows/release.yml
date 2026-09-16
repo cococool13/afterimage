@@ -26,6 +26,12 @@ jobs:
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
           -o publish
+      - name: Sign
+        if: ${{ secrets.WINDOWS_CERT_PFX != '' }}
+        env:
+          WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
+          WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
+        run: powershell -File scripts/sign.ps1 publish/Afterimage.exe
       - name: Zip
         run: Compress-Archive -Path publish\* -DestinationPath Afterimage.zip
       - uses: softprops/action-gh-release@v2

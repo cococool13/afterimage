@@ -42,4 +42,5 @@ cd site && npx wrangler deploy
 5. Site is a single no-scroll poster: Honk-locked sky `#254fb1`, sunshine wordmark `#ffe400`, white Download button. Do not add sections or a scrollbar.
 6. First run relocates the exe to `%LOCALAPPDATA%\Programs\Afterimage` and shows WelcomeForm while FFmpeg downloads. `Onboarded` in settings.json.
 7. Hotkey is click-to-bind. Mic and Fast/Quality restart the buffer. GitHub Actions on `v*` tags publishes `Afterimage.zip`.
-8. Out of scope: multi-monitor picker, 120 fps, HDR, AMD/Intel encode.
+8. Clip cap: 50 files or 5 GB. Admin relaunch uses `runas` and a Global mutex. Signing is `scripts/sign.ps1` when `WINDOWS_CERT_PFX` is set.
+9. Out of scope: multi-monitor picker, 120 fps, HDR, AMD/Intel encode.

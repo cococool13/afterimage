@@ -21,7 +21,10 @@ sealed class ReplayBuffer : IDisposable
     string _status = "starting";
 
     public string TargetName { get; private set; } = "";
+    public int TargetPid { get; private set; }
     public string? LastPath { get; private set; }
+
+    public bool NeedsAdmin => Admin.NeedsAdminFor(TargetPid);
 
     public bool IsRunning
     {
@@ -74,6 +77,7 @@ sealed class ReplayBuffer : IDisposable
         {
             _hwnd = 0;
             TargetName = "";
+            TargetPid = 0;
             _status = "waiting";
             TryTrim();
             return;
@@ -81,6 +85,7 @@ sealed class ReplayBuffer : IDisposable
 
         _hwnd = target.Hwnd;
         TargetName = target.Name;
+        TargetPid = target.Pid;
         var video = VideoFilter(target.Hwnd);
 
         var pipeName = "ClipAudio-" + Environment.ProcessId;
@@ -175,6 +180,7 @@ sealed class ReplayBuffer : IDisposable
                     if (gen != Volatile.Read(ref _generation) || !_armed) return;
                     _hwnd = 0;
                     TargetName = "";
+                    TargetPid = 0;
                     _status = "waiting";
                 }
             }
@@ -205,6 +211,7 @@ sealed class ReplayBuffer : IDisposable
                     StopFfmpeg();
                     _hwnd = 0;
                     TargetName = "";
+                    TargetPid = 0;
                     _status = "waiting";
                     TryTrim();
                     return;
@@ -340,6 +347,14 @@ sealed class ReplayBuffer : IDisposable
                 return null;
             }
             LastPath = dest;
+            if (_settings.CapClips)
+            {
+                var n = ClipCap.Prune(
+                    _settings.ClipsFolder,
+                    ClipCap.DefaultMaxFiles,
+                    (long)ClipCap.DefaultMaxGb << 30);
+                if (n > 0) Log.Line("pruned " + n);
+            }
             Log.Line("saved " + dest);
             return dest;
         }
