@@ -1,22 +1,41 @@
 using System.IO.Pipes;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace Afterimage;
 
-sealed class LoopbackPipe : IDisposable
+sealed class PcmPipe : IDisposable
 {
     readonly string _pipeName;
+    readonly bool _loopback;
     NamedPipeServerStream? _pipe;
-    WasapiLoopbackCapture? _capture;
+    IWaveIn? _capture;
     int _busy;
 
-    public LoopbackPipe(string pipeName) => _pipeName = pipeName;
+    PcmPipe(string pipeName, bool loopback)
+    {
+        _pipeName = pipeName;
+        _loopback = loopback;
+    }
 
     public int SampleRate { get; private set; } = 48000;
     public int Channels { get; private set; } = 2;
-    public bool Connected => _pipe is { IsConnected: true };
 
-    public void Start()
+    public static PcmPipe StartLoopback(string pipeName)
+    {
+        var p = new PcmPipe(pipeName, loopback: true);
+        p.Start();
+        return p;
+    }
+
+    public static PcmPipe StartMic(string pipeName)
+    {
+        var p = new PcmPipe(pipeName, loopback: false);
+        p.Start();
+        return p;
+    }
+
+    void Start()
     {
         _pipe = new NamedPipeServerStream(
             _pipeName,
@@ -27,18 +46,17 @@ sealed class LoopbackPipe : IDisposable
             inBufferSize: 0,
             outBufferSize: 256 * 1024);
 
-        _capture = new WasapiLoopbackCapture();
+        _capture = _loopback ? new WasapiLoopbackCapture() : new WasapiCapture();
         var format = _capture.WaveFormat;
         if (format.Encoding != WaveFormatEncoding.IeeeFloat || format.BitsPerSample != 32)
-            throw new InvalidOperationException("loopback is not 32-bit float");
+            throw new InvalidOperationException("capture is not 32-bit float");
         SampleRate = format.SampleRate;
         Channels = format.Channels;
         _capture.DataAvailable += OnData;
         _capture.RecordingStopped += (_, e) =>
         {
-            if (e.Exception is not null) Log.Line("loopback stopped: " + e.Exception.Message);
+            if (e.Exception is not null) Log.Line((_loopback ? "loopback" : "mic") + " stopped: " + e.Exception.Message);
         };
-
         _ = ConnectAsync();
     }
 
@@ -52,7 +70,7 @@ sealed class LoopbackPipe : IDisposable
         }
         catch (Exception ex)
         {
-            Log.Line("loopback connect failed: " + ex.Message);
+            Log.Line((_loopback ? "loopback" : "mic") + " connect failed: " + ex.Message);
         }
     }
 
@@ -65,10 +83,7 @@ sealed class LoopbackPipe : IDisposable
         {
             pipe.Write(e.Buffer, 0, e.BytesRecorded);
         }
-        catch (IOException)
-        {
-            // ffmpeg exited
-        }
+        catch (IOException) { }
         catch (ObjectDisposedException) { }
         finally
         {

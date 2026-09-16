@@ -9,10 +9,15 @@ sealed class SettingsForm : Form
     readonly Panel _dot;
     readonly Button _pause;
     readonly Button[] _length;
+    readonly Button _hotkey;
+    readonly Button[] _quality;
     readonly CheckBox _boot;
     readonly CheckBox _sound;
+    readonly CheckBox _mic;
     readonly Label _folder;
+    readonly Label[] _recent;
     readonly System.Windows.Forms.Timer _tick;
+    bool _listen;
 
     public SettingsForm(Settings settings, ReplayBuffer buffer, Action quit)
     {
@@ -26,40 +31,20 @@ sealed class SettingsForm : Form
         MinimizeBox = false;
         ShowInTaskbar = true;
         StartPosition = FormStartPosition.CenterScreen;
-        ClientSize = new Size(380, 540);
+        ClientSize = new Size(380, 700);
         BackColor = Theme.Canvas;
         ForeColor = Theme.Text;
         Font = Theme.Ui;
-        Padding = new Padding(20);
+        KeyPreview = true;
 
         var y = 18;
         Controls.Add(LabelAt("Afterimage", 20, y, Theme.Title, Theme.Text));
         y += 28;
 
-        _dot = new Panel
-        {
-            Location = new Point(22, y + 6),
-            Size = new Size(8, 8),
-            BackColor = Theme.Mint,
-        };
-        _status = new Label
-        {
-            Location = new Point(36, y),
-            Size = new Size(200, 22),
-            ForeColor = Theme.Mute,
-            Text = "Starting",
-        };
+        _dot = new Panel { Location = new Point(22, y + 6), Size = new Size(8, 8), BackColor = Theme.Mint };
+        _status = new Label { Location = new Point(36, y), Size = new Size(200, 22), ForeColor = Theme.Mute, Text = "Starting" };
         _pause = Pill("Pause", 248, y - 4, 112, false);
-        _pause.Click += (_, _) =>
-        {
-            if (_buffer.IsRunning) _buffer.Stop();
-            else
-            {
-                try { _buffer.Start(); }
-                catch (Exception ex) { Log.Line(ex.ToString()); }
-            }
-            RefreshState();
-        };
+        _pause.Click += async (_, _) => await ToggleCapture();
         Controls.Add(_dot);
         Controls.Add(_status);
         Controls.Add(_pause);
@@ -81,74 +66,155 @@ sealed class SettingsForm : Form
                 _settings.Save();
                 if (_buffer.IsRunning) _buffer.Start();
                 PaintLength();
-                RefreshState();
             };
             _length[i] = btn;
             Controls.Add(btn);
         }
         y += 44;
 
+        Controls.Add(LabelAt("QUALITY", 20, y, Theme.UiSmall, Theme.Mute));
+        y += 22;
+        _quality = new Button[2];
+        _quality[0] = Pill("Fast", 20, y, 166, _settings.Quality != "quality");
+        _quality[1] = Pill("Quality", 194, y, 166, _settings.Quality == "quality");
+        _quality[0].Click += (_, _) => SetQuality("fast");
+        _quality[1].Click += (_, _) => SetQuality("quality");
+        Controls.Add(_quality[0]);
+        Controls.Add(_quality[1]);
+        y += 44;
+
         Controls.Add(LabelAt("HOTKEY", 20, y, Theme.UiSmall, Theme.Mute));
         y += 22;
-        var key = Pill("F8", 20, y, 64, true);
-        key.Enabled = false;
-        Controls.Add(key);
-        Controls.Add(LabelAt("Saves the last seconds.", 96, y + 4, Theme.UiSmall, Theme.Mute));
+        _hotkey = Pill(Hotkey.Label(_settings.HotkeyVk), 20, y, 100, true);
+        _hotkey.Click += (_, _) =>
+        {
+            _listen = true;
+            _hotkey.Text = "...";
+        };
+        Controls.Add(_hotkey);
+        Controls.Add(LabelAt("Click, then press a key.", 130, y + 4, Theme.UiSmall, Theme.Mute));
         y += 44;
-        Controls.Add(Rule(y));
-        y += 16;
-
-        _boot = Check("Start with Windows", 20, y, _settings.StartWithWindows);
-        _boot.CheckedChanged += (_, _) =>
-        {
-            _settings.StartWithWindows = _boot.Checked;
-            _settings.Save();
-        };
-        Controls.Add(_boot);
-        y += 28;
-        _sound = Check("Play a sound", 20, y, _settings.PlaySound);
-        _sound.CheckedChanged += (_, _) =>
-        {
-            _settings.PlaySound = _sound.Checked;
-            _settings.Save();
-        };
-        Controls.Add(_sound);
-        y += 36;
         Controls.Add(Rule(y));
         y += 14;
 
-        Controls.Add(LabelAt("CLIPS FOLDER", 20, y, Theme.UiSmall, Theme.Mute));
-        y += 20;
-        _folder = new Label
+        _boot = Check("Start with Windows", 20, y, _settings.StartWithWindows);
+        _boot.CheckedChanged += (_, _) => { _settings.StartWithWindows = _boot.Checked; _settings.Save(); };
+        Controls.Add(_boot);
+        y += 26;
+        _sound = Check("Play a sound", 20, y, _settings.PlaySound);
+        _sound.CheckedChanged += (_, _) => { _settings.PlaySound = _sound.Checked; _settings.Save(); };
+        Controls.Add(_sound);
+        y += 26;
+        _mic = Check("Record microphone", 20, y, _settings.Mic);
+        _mic.CheckedChanged += (_, _) =>
         {
-            Location = new Point(20, y),
-            Size = new Size(250, 36),
-            ForeColor = Theme.Mute,
-            Font = Theme.UiSmall,
+            _settings.Mic = _mic.Checked;
+            _settings.Save();
+            if (_buffer.IsRunning) _buffer.Start();
         };
+        Controls.Add(_mic);
+        y += 34;
+        Controls.Add(Rule(y));
+        y += 12;
+
+        Controls.Add(LabelAt("CLIPS FOLDER", 20, y, Theme.UiSmall, Theme.Mute));
+        y += 18;
+        _folder = new Label { Location = new Point(20, y), Size = new Size(250, 32), ForeColor = Theme.Mute, Font = Theme.UiSmall };
         var change = Ghost("Change", 276, y, 84);
         change.Click += (_, _) => PickFolder();
         Controls.Add(_folder);
         Controls.Add(change);
+        y += 40;
+
+        var view = Ash("View clips", 20, y, 166);
+        view.Click += (_, _) => OpenClips();
+        var last = Ghost("Open last", 194, y, 166);
+        last.Click += (_, _) => OpenLast();
+        Controls.Add(view);
+        Controls.Add(last);
         y += 44;
 
-        var view = Ash("View clips", 20, y, 340);
-        view.Click += (_, _) => OpenClips();
-        Controls.Add(view);
-        y += 44;
+        Controls.Add(LabelAt("RECENT", 20, y, Theme.UiSmall, Theme.Mute));
+        y += 18;
+        _recent = new Label[3];
+        for (var i = 0; i < 3; i++)
+        {
+            var row = new Label
+            {
+                Location = new Point(20, y),
+                Size = new Size(340, 20),
+                ForeColor = Theme.Mute,
+                Font = Theme.UiSmall,
+                Cursor = Cursors.Hand,
+            };
+            row.Click += (_, _) =>
+            {
+                if (row.Tag is string path && File.Exists(path)) Shell.Open(path);
+            };
+            _recent[i] = row;
+            Controls.Add(row);
+            y += 20;
+        }
+        y += 10;
         var quitBtn = Ghost("Quit Afterimage", 20, y, 340);
         quitBtn.Click += (_, _) => _quit();
         Controls.Add(quitBtn);
 
+        KeyDown += OnKeyDown;
         _tick = new System.Windows.Forms.Timer { Interval = 800 };
         _tick.Tick += (_, _) => RefreshState();
         Load += (_, _) =>
         {
             RefreshState();
             PaintLength();
+            PaintQuality();
             _tick.Start();
         };
         FormClosed += (_, _) => _tick.Stop();
+    }
+
+    async Task ToggleCapture()
+    {
+        if (_buffer.IsRunning) _buffer.Stop();
+        else
+        {
+            try
+            {
+                await _buffer.EnsureFfmpegAsync(CancellationToken.None);
+                _buffer.Start();
+            }
+            catch (Exception ex)
+            {
+                Log.Line(ex.ToString());
+            }
+        }
+        RefreshState();
+    }
+
+    void OnKeyDown(object? sender, KeyEventArgs e)
+    {
+        if (!_listen) return;
+        e.Handled = true;
+        e.SuppressKeyPress = true;
+        if (e.KeyCode == Keys.Escape)
+        {
+            _listen = false;
+            _hotkey.Text = Hotkey.Label(_settings.HotkeyVk);
+            return;
+        }
+        if (Hotkey.IsModifier(e.KeyCode)) return;
+        _settings.HotkeyVk = (int)e.KeyCode;
+        _settings.Save();
+        _listen = false;
+        _hotkey.Text = Hotkey.Label(_settings.HotkeyVk);
+    }
+
+    void SetQuality(string quality)
+    {
+        _settings.Quality = quality;
+        _settings.Save();
+        if (_buffer.IsRunning) _buffer.Start();
+        PaintQuality();
     }
 
     void RefreshState()
@@ -160,6 +226,8 @@ sealed class SettingsForm : Form
         _dot.BackColor = on ? Theme.Mint : Theme.Ember;
         _pause.Text = on ? "Pause" : "Resume";
         _folder.Text = _settings.ClipsFolder;
+        if (!_listen) _hotkey.Text = Hotkey.Label(_settings.HotkeyVk);
+        PaintRecent();
     }
 
     void PaintLength()
@@ -167,6 +235,41 @@ sealed class SettingsForm : Form
         var seconds = new[] { 15, 20, 30 };
         for (var i = 0; i < _length.Length; i++)
             Style(_length[i], seconds[i] == _settings.Seconds);
+    }
+
+    void PaintQuality()
+    {
+        Style(_quality[0], _settings.Quality != "quality");
+        Style(_quality[1], _settings.Quality == "quality");
+    }
+
+    void PaintRecent()
+    {
+        string[] files = [];
+        try
+        {
+            if (Directory.Exists(_settings.ClipsFolder))
+                files = Directory.GetFiles(_settings.ClipsFolder, "*.mp4")
+                    .OrderByDescending(File.GetLastWriteTimeUtc)
+                    .Take(3)
+                    .ToArray();
+        }
+        catch { }
+        for (var i = 0; i < _recent.Length; i++)
+        {
+            if (i < files.Length)
+            {
+                _recent[i].Text = Path.GetFileNameWithoutExtension(files[i]);
+                _recent[i].Tag = files[i];
+                _recent[i].ForeColor = Theme.Text;
+            }
+            else
+            {
+                _recent[i].Text = i == 0 ? "No clips yet" : "";
+                _recent[i].Tag = null;
+                _recent[i].ForeColor = Theme.Mute;
+            }
+        }
     }
 
     void PickFolder()
@@ -186,6 +289,13 @@ sealed class SettingsForm : Form
     {
         Directory.CreateDirectory(_settings.ClipsFolder);
         Shell.Folder(_settings.ClipsFolder);
+    }
+
+    void OpenLast()
+    {
+        var path = _buffer.LastPath;
+        if (path is not null && File.Exists(path)) Shell.Open(path);
+        else OpenClips();
     }
 
     static string Title(string status) =>

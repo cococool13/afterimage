@@ -7,7 +7,8 @@ sealed class ReplayBuffer : IDisposable
     readonly Settings _settings;
     readonly object _gate = new();
     Process? _ffmpeg;
-    LoopbackPipe? _audio;
+    PcmPipe? _audio;
+    PcmPipe? _mic;
     System.Threading.Timer? _follow;
     string? _ffmpegPath;
     nint _hwnd;
@@ -19,6 +20,7 @@ sealed class ReplayBuffer : IDisposable
     string _status = "starting";
 
     public string TargetName { get; private set; } = "";
+    public string? LastPath { get; private set; }
 
     public bool IsRunning
     {
@@ -68,6 +70,7 @@ sealed class ReplayBuffer : IDisposable
             : "gfxcapture=monitor_idx=0:width=1920:height=1080:resize_mode=scale:scale_mode=bilinear:max_framerate=60:capture_cursor=0:display_border=0";
 
         var pipeName = "ClipAudio-" + Environment.ProcessId;
+        var micName = "ClipMic-" + Environment.ProcessId;
         var wrap = _settings.Seconds + 4;
         var args = new List<string>
         {
@@ -76,35 +79,51 @@ sealed class ReplayBuffer : IDisposable
             "-fflags", "+genpts",
             "-init_hw_device", "d3d11va=hw",
             "-filter_hw_device", "hw",
-            "-filter_complex", video,
         };
 
         try
         {
-            _audio = new LoopbackPipe(pipeName);
-            _audio.Start();
-            args.AddRange([
-                "-thread_queue_size", "32",
-                "-probesize", "32",
-                "-analyzeduration", "0",
-                "-f", "f32le",
-                "-ar", _audio.SampleRate.ToString(),
-                "-ac", _audio.Channels.ToString(),
-                "-i", @"\\.\pipe\" + pipeName,
-                "-map", "0:v:0",
-                "-map", "1:a:0",
-            ]);
+            _audio = PcmPipe.StartLoopback(pipeName);
+            if (_settings.Mic)
+            {
+                try { _mic = PcmPipe.StartMic(micName); }
+                catch (Exception ex)
+                {
+                    Log.Line("mic skipped: " + ex.Message);
+                    _mic?.Dispose();
+                    _mic = null;
+                }
+            }
+
+            if (_mic is not null)
+            {
+                AddPcmInput(args, _audio, pipeName);
+                AddPcmInput(args, _mic, micName);
+                args.AddRange([
+                    "-filter_complex",
+                    video + "[v];[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=0[a]",
+                    "-map", "[v]",
+                    "-map", "[a]",
+                ]);
+            }
+            else
+            {
+                args.AddRange(["-filter_complex", video]);
+                AddPcmInput(args, _audio, pipeName);
+                args.AddRange(["-map", "0:v:0", "-map", "1:a:0"]);
+            }
         }
         catch (Exception ex)
         {
             Log.Line("audio skipped: " + ex.Message);
             _audio?.Dispose();
             _audio = null;
+            args.AddRange(["-filter_complex", video]);
         }
 
         args.AddRange([
             "-c:v", "h264_nvenc",
-            "-preset", "p1",
+            "-preset", _settings.NvencPreset,
             "-tune", "ull",
             "-rc", "constqp",
             "-qp", "23",
@@ -203,6 +222,8 @@ sealed class ReplayBuffer : IDisposable
         }
         _audio?.Dispose();
         _audio = null;
+        _mic?.Dispose();
+        _mic = null;
         _status = "paused";
     }
 
@@ -241,6 +262,7 @@ sealed class ReplayBuffer : IDisposable
                 Log.Line("save failed: " + err);
                 return null;
             }
+            LastPath = dest;
             Log.Line("saved " + dest);
             return dest;
         }
@@ -249,6 +271,17 @@ sealed class ReplayBuffer : IDisposable
             Interlocked.Exchange(ref _saving, 0);
         }
     }
+
+    static void AddPcmInput(List<string> args, PcmPipe pipe, string pipeName) =>
+        args.AddRange([
+            "-thread_queue_size", "32",
+            "-probesize", "32",
+            "-analyzeduration", "0",
+            "-f", "f32le",
+            "-ar", pipe.SampleRate.ToString(),
+            "-ac", pipe.Channels.ToString(),
+            "-i", @"\\.\pipe\" + pipeName,
+        ]);
 
     static async Task WaitForSegmentClose()
     {

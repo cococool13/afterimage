@@ -5,7 +5,6 @@ namespace Afterimage;
 
 sealed class App : ApplicationContext
 {
-    const int VkF8 = 0x77;
     const int WhKeyboardLl = 13;
     const int WmKeydown = 0x0100;
 
@@ -25,8 +24,11 @@ sealed class App : ApplicationContext
     {
         _ui = SynchronizationContext.Current ?? new SynchronizationContext();
         _buffer = new ReplayBuffer(_settings);
+        Shortcuts.EnsureStartMenu();
         _icon = LoadIcon();
         _rightMenu = new ContextMenuStrip();
+        _rightMenu.Items.Add("Clip now", null, (_, _) => _ = SaveClip());
+        _rightMenu.Items.Add("Open last clip", null, (_, _) => OpenLast());
         _rightMenu.Items.Add("Settings", null, (_, _) => ShowSettings());
         _rightMenu.Items.Add("Quit", null, (_, _) => ExitThread());
 
@@ -56,7 +58,7 @@ sealed class App : ApplicationContext
                 try
                 {
                     _buffer.Start();
-                    SetTip(_buffer.Status);
+                    SetTip();
                 }
                 catch (Exception ex)
                 {
@@ -69,7 +71,7 @@ sealed class App : ApplicationContext
         catch (Exception ex)
         {
             Log.Line(ex.ToString());
-            _ui.Post(_ => SetTip("need FFmpeg — open settings"), null);
+            _ui.Post(_ => SetTip("need FFmpeg"), null);
         }
     }
 
@@ -101,6 +103,7 @@ sealed class App : ApplicationContext
         try
         {
             var path = await _buffer.SaveAsync();
+            if (path is not null) SetTip();
             if (!_settings.PlaySound) return;
             if (path is null) Tick.Fail();
             else Tick.Ok();
@@ -118,7 +121,7 @@ sealed class App : ApplicationContext
 
     IntPtr OnHook(int code, IntPtr wParam, IntPtr lParam)
     {
-        if (code >= 0 && wParam == WmKeydown && Marshal.ReadInt32(lParam) == VkF8)
+        if (code >= 0 && wParam == WmKeydown && Marshal.ReadInt32(lParam) == Hotkey.Normalize(_settings.HotkeyVk))
         {
             var now = Environment.TickCount64;
             if (now - Volatile.Read(ref _lastF8) >= 500)
@@ -131,9 +134,21 @@ sealed class App : ApplicationContext
         return Native.CallNextHookEx(_hook, code, wParam, lParam);
     }
 
-    void SetTip(string status)
+    void OpenLast()
     {
-        var text = "Afterimage — " + status;
+        var path = _buffer.LastPath;
+        if (path is not null && File.Exists(path)) Shell.Open(path);
+        else
+        {
+            Directory.CreateDirectory(_settings.ClipsFolder);
+            Shell.Folder(_settings.ClipsFolder);
+        }
+    }
+
+    void SetTip(string? status = null)
+    {
+        status ??= _buffer.Status;
+        var text = "Afterimage — " + Hotkey.Label(_settings.HotkeyVk) + " — " + status;
         _tray.Text = text.Length <= 63 ? text : "Afterimage";
     }
 
@@ -166,6 +181,9 @@ sealed class App : ApplicationContext
 static class Shell
 {
     public static void Folder(string path) =>
+        Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
+
+    public static void Open(string path) =>
         Process.Start(new ProcessStartInfo { FileName = path, UseShellExecute = true });
 }
 

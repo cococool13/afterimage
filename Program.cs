@@ -8,7 +8,7 @@ static class Program
     static int Main(string[] args)
     {
         if (args.Contains("--self-check", StringComparer.OrdinalIgnoreCase))
-            return SegmentPicker.SelfCheck() == 0 && ClipName.SelfCheck() == 0 && GameWindow.SelfCheck() == 0 ? 0 : 1;
+            return SegmentPicker.SelfCheck() == 0 && ClipName.SelfCheck() == 0 && GameWindow.SelfCheck() == 0 && Hotkey.SelfCheck() == 0 ? 0 : 1;
 
         using var mutex = new Mutex(true, MutexName, out var created);
         if (!created) return 0;
