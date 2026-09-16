@@ -7,9 +7,13 @@ Windows tray app. Press **F8** to keep the last 15, 20, or 30 seconds. No overla
 
 ## On the Windows PC
 
-Needs **.NET 8 Desktop** and an **NVIDIA** GPU.
+Needs an **NVIDIA** GPU. The download is self-contained.
 
-Download the zip from [Releases](https://github.com/cococool13/afterimage/releases/latest) or from the site. Unzip and run `Afterimage.exe`. First run downloads FFmpeg and adds a Start Menu shortcut.
+1. Download Afterimage.zip
+2. Run `Afterimage.exe`
+3. Wait for the one-time encoder download, click **Got it**
+
+It copies itself into `%LOCALAPPDATA%\Programs\Afterimage` and adds a Start Menu shortcut.
 
 From this repo on a Windows PC:
 

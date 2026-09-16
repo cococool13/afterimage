@@ -2,11 +2,11 @@ namespace Afterimage;
 
 static class Shortcuts
 {
-    public static void EnsureStartMenu()
+    public static void Write(string? exe = null)
     {
         try
         {
-            var exe = Environment.ProcessPath;
+            exe ??= Environment.ProcessPath;
             if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return;
             var dir = Environment.GetFolderPath(Environment.SpecialFolder.Programs);
             Directory.CreateDirectory(dir);

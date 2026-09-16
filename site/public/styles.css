@@ -63,6 +63,14 @@ h1 {
 .btn:hover { background: var(--sun); }
 .btn:focus-visible { outline: 3px solid var(--sun); outline-offset: 3px; }
 
+.hint {
+  margin: 0;
+  color: var(--paper);
+  font-size: 14px;
+  font-weight: 800;
+  opacity: 0.85;
+}
+
 @media (max-width: 480px) {
   h1 { font-size: 32px; }
   .logo { width: 180px; height: 180px; }

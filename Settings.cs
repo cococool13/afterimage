@@ -10,6 +10,7 @@ sealed class Settings
     public bool PlaySound { get; set; } = true;
     public bool Mic { get; set; }
     public string Quality { get; set; } = "fast";
+    public bool Onboarded { get; set; }
     public string ClipsFolder { get; set; } = DefaultClipsFolder();
 
     static string FilePath => Path.Combine(Paths.Root, "settings.json");

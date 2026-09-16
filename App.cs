@@ -24,7 +24,7 @@ sealed class App : ApplicationContext
     {
         _ui = SynchronizationContext.Current ?? new SynchronizationContext();
         _buffer = new ReplayBuffer(_settings);
-        Shortcuts.EnsureStartMenu();
+        Shortcuts.Write();
         _icon = LoadIcon();
         _rightMenu = new ContextMenuStrip();
         _rightMenu.Items.Add("Clip now", null, (_, _) => _ = SaveClip());
@@ -49,6 +49,17 @@ sealed class App : ApplicationContext
 
     async Task ReadyAsync()
     {
+        if (!_settings.Onboarded)
+        {
+            _ui.Post(_ =>
+            {
+                var welcome = new WelcomeForm(_settings, _buffer);
+                welcome.FormClosed += (_, _) => SetTip();
+                welcome.Show();
+            }, null);
+            return;
+        }
+
         try
         {
             SetTip("getting FFmpeg");

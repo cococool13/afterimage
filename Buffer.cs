@@ -40,10 +40,10 @@ sealed class ReplayBuffer : IDisposable
     public bool Armed => _armed;
     public string Status => IsRunning ? "recording" : _status;
 
-    public async Task EnsureFfmpegAsync(CancellationToken cancel)
+    public async Task EnsureFfmpegAsync(CancellationToken cancel, IProgress<int>? progress = null)
     {
         _status = "getting FFmpeg";
-        _ffmpegPath = await Ffmpeg.EnsureAsync(cancel);
+        _ffmpegPath = await Ffmpeg.EnsureAsync(cancel, progress);
         _status = "ready";
     }
 
