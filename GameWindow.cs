@@ -29,12 +29,7 @@ static class GameWindow
     {
         var fg = Root(GetForegroundWindow());
         if (IsGame(fg)) return Describe(fg);
-
         if (IsAlive(sticky) && IsGame(sticky)) return Describe(sticky);
-
-        var full = FindFullscreen();
-        if (full != 0) return Describe(full);
-
         return default;
     }
 
@@ -50,23 +45,13 @@ static class GameWindow
         return 0;
     }
 
-    static nint FindFullscreen()
+    public static bool BiggerThan1080(nint hwnd)
     {
-        nint best = 0;
-        var bestArea = 0L;
-        EnumWindows((hwnd, _) =>
-        {
-            if (!IsGame(hwnd) || !CoversPrimary(hwnd)) return true;
-            var area = Area(hwnd);
-            if (area > bestArea)
-            {
-                bestArea = area;
-                best = hwnd;
-            }
-            return true;
-        }, 0);
-        return best;
+        if (!GetWindowRect(hwnd, out var r)) return true;
+        return r.Right - r.Left > 1920 || r.Bottom - r.Top > 1080;
     }
+
+    static readonly Dictionary<int, (string Name, long Until)> NameCache = [];
 
     static bool IsGame(nint hwnd)
     {
@@ -93,15 +78,25 @@ static class GameWindow
 
     static string ProcessName(int pid)
     {
+        var now = Environment.TickCount64;
+        if (NameCache.TryGetValue(pid, out var hit) && hit.Until > now) return hit.Name;
+        string name;
         try
         {
             using var p = Process.GetProcessById(pid);
-            return p.ProcessName;
+            name = p.ProcessName;
         }
         catch
         {
-            return "";
+            name = "";
         }
+        NameCache[pid] = (name, now + 8000);
+        if (NameCache.Count > 64)
+        {
+            foreach (var old in NameCache.Where(kv => kv.Value.Until < now).Select(kv => kv.Key).ToArray())
+                NameCache.Remove(old);
+        }
+        return name;
     }
 
     static bool CoversPrimary(nint hwnd)
@@ -145,8 +140,6 @@ static class GameWindow
     const int DwmwaCloaked = 14;
     const int MonitorDefaultToPrimary = 1;
 
-    delegate bool EnumProc(nint hwnd, nint lParam);
-
     [DllImport("user32.dll")]
     static extern nint GetForegroundWindow();
 
@@ -167,9 +160,6 @@ static class GameWindow
 
     [DllImport("user32.dll")]
     static extern uint GetWindowThreadProcessId(nint hwnd, out uint pid);
-
-    [DllImport("user32.dll")]
-    static extern bool EnumWindows(EnumProc lpEnumFunc, nint lParam);
 
     [DllImport("user32.dll")]
     static extern nint MonitorFromWindow(nint hwnd, int flags);

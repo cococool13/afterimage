@@ -161,7 +161,7 @@ sealed class SettingsForm : Form
         Controls.Add(quitBtn);
 
         KeyDown += OnKeyDown;
-        _tick = new System.Windows.Forms.Timer { Interval = 800 };
+        _tick = new System.Windows.Forms.Timer { Interval = 2000 };
         _tick.Tick += (_, _) => RefreshState();
         Load += (_, _) =>
         {
@@ -175,7 +175,7 @@ sealed class SettingsForm : Form
 
     async Task ToggleCapture()
     {
-        if (_buffer.IsRunning) _buffer.Stop();
+        if (_buffer.Armed) _buffer.Stop();
         else
         {
             try
@@ -223,8 +223,8 @@ sealed class SettingsForm : Form
         _status.Text = on
             ? (string.IsNullOrEmpty(_buffer.TargetName) ? "Recording" : "Recording · " + _buffer.TargetName)
             : Title(_buffer.Status);
-        _dot.BackColor = on ? Theme.Mint : Theme.Ember;
-        _pause.Text = on ? "Pause" : "Resume";
+        _dot.BackColor = on ? Theme.Mint : _buffer.Armed ? Theme.Ash : Theme.Ember;
+        _pause.Text = _buffer.Armed ? "Pause" : "Resume";
         _folder.Text = _settings.ClipsFolder;
         if (!_listen) _hotkey.Text = Hotkey.Label(_settings.HotkeyVk);
         PaintRecent();

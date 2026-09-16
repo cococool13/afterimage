@@ -35,7 +35,7 @@ cd site && npx wrangler deploy
 
 ## Gotchas
 
-1. Capture the game HWND via `gfxcapture=hwnd=…` so exclusive fullscreen works. Monitor is the fallback. Follows the game; keeps the last game if Settings is focused.
+1. Encode only while a game window is live. Desktop idle = no ffmpeg. 1080p titles skip GPU scale. Fast is NVENC p1 qp 26.
 2. No overlay or toast. Confirm with `Tick` only.
 3. F8 is a low-level hook. Elevated games need Afterimage elevated.
 4. Filenames: `Sep 15 2.41 PM.mp4` via `ClipName`.

@@ -12,6 +12,7 @@ sealed class ReplayBuffer : IDisposable
     System.Threading.Timer? _follow;
     string? _ffmpegPath;
     nint _hwnd;
+    bool _armed;
     int _saving;
     int _generation;
 
@@ -31,11 +32,12 @@ sealed class ReplayBuffer : IDisposable
                 if (_ffmpeg is { HasExited: false }) return true;
             }
             catch { }
-            if (_status == "recording") _status = "paused";
+            if (_status == "recording") _status = _armed ? "waiting" : "paused";
             return false;
         }
     }
 
+    public bool Armed => _armed;
     public string Status => IsRunning ? "recording" : _status;
 
     public async Task EnsureFfmpegAsync(CancellationToken cancel)
@@ -47,13 +49,18 @@ sealed class ReplayBuffer : IDisposable
 
     public void Start()
     {
-        lock (_gate) StartCore();
+        lock (_gate)
+        {
+            _armed = true;
+            StartCore();
+        }
     }
 
     void StartCore()
     {
-        StopCore();
+        StopFfmpeg();
         if (_ffmpegPath is null) throw new InvalidOperationException("ffmpeg missing");
+        EnsureFollow();
 
         Directory.CreateDirectory(Paths.Buffer);
         foreach (var leftover in Directory.EnumerateFiles(Paths.Buffer, "seg_*.ts"))
@@ -63,11 +70,18 @@ sealed class ReplayBuffer : IDisposable
         Directory.CreateDirectory(_settings.ClipsFolder);
 
         var target = GameWindow.Pick(_hwnd);
+        if (target.Hwnd == 0)
+        {
+            _hwnd = 0;
+            TargetName = "";
+            _status = "waiting";
+            TryTrim();
+            return;
+        }
+
         _hwnd = target.Hwnd;
         TargetName = target.Name;
-        var video = target.Hwnd != 0
-            ? $"gfxcapture=hwnd={(ulong)target.Hwnd}:width=1920:height=1080:resize_mode=scale:scale_mode=bilinear:max_framerate=60:capture_cursor=0:display_border=0"
-            : "gfxcapture=monitor_idx=0:width=1920:height=1080:resize_mode=scale:scale_mode=bilinear:max_framerate=60:capture_cursor=0:display_border=0";
+        var video = VideoFilter(target.Hwnd);
 
         var pipeName = "ClipAudio-" + Environment.ProcessId;
         var micName = "ClipMic-" + Environment.ProcessId;
@@ -126,9 +140,10 @@ sealed class ReplayBuffer : IDisposable
             "-preset", _settings.NvencPreset,
             "-tune", "ull",
             "-rc", "constqp",
-            "-qp", "23",
+            "-qp", _settings.Quality == "quality" ? "21" : "26",
             "-bf", "0",
             "-g", "60",
+            "-gpu", "0",
             "-rc-lookahead", "0",
             "-delay", "0",
             "-allow_sw", "0",
@@ -154,13 +169,13 @@ sealed class ReplayBuffer : IDisposable
             if (gen != Volatile.Read(ref _generation)) return;
             if (DateTime.UtcNow - started < TimeSpan.FromSeconds(3) && _hwnd != 0)
             {
-                Log.Line("window capture died; falling back to monitor");
+                Log.Line("window capture died; waiting for a game");
                 lock (_gate)
                 {
-                    if (gen != Volatile.Read(ref _generation)) return;
+                    if (gen != Volatile.Read(ref _generation) || !_armed) return;
                     _hwnd = 0;
                     TargetName = "";
-                    StartCore();
+                    _status = "waiting";
                 }
             }
         }
@@ -168,8 +183,8 @@ sealed class ReplayBuffer : IDisposable
         if (proc.HasExited) Fallback(null, null);
         _ffmpeg = proc;
         _status = "recording";
-        _follow = new System.Threading.Timer(Follow, null, 1000, 1000);
-        Log.Line($"buffer start {_settings.Seconds}s 1080p {(target.Hwnd == 0 ? "monitor" : target.Name)}");
+        TryLowLatency(true);
+        Log.Line($"buffer start {_settings.Seconds}s {_settings.NvencPreset} {target.Name}");
     }
 
     void Follow(object? _)
@@ -177,13 +192,28 @@ sealed class ReplayBuffer : IDisposable
         if (!Monitor.TryEnter(_gate)) return;
         try
         {
-            if (_ffmpegPath is null || Volatile.Read(ref _saving) != 0) return;
-            if (_ffmpeg is null || _ffmpeg.HasExited) return;
+            if (!_armed || _ffmpegPath is null || Volatile.Read(ref _saving) != 0) return;
             var next = GameWindow.Pick(_hwnd);
-            if (next.Hwnd == _hwnd) return;
-            if (next.Hwnd == 0 && _hwnd != 0 && GameWindow.IsAlive(_hwnd)) return;
-            Log.Line($"retarget {(next.Hwnd == 0 ? "monitor" : next.Name)}");
-            StartCore();
+            var live = _ffmpeg is { HasExited: false };
+            if (live)
+            {
+                if (next.Hwnd == _hwnd) return;
+                if (next.Hwnd == 0 && GameWindow.IsAlive(_hwnd)) return;
+                if (next.Hwnd == 0)
+                {
+                    Log.Line("game gone; idle");
+                    StopFfmpeg();
+                    _hwnd = 0;
+                    TargetName = "";
+                    _status = "waiting";
+                    TryTrim();
+                    return;
+                }
+                Log.Line("retarget " + next.Name);
+                StartCore();
+                return;
+            }
+            if (next.Hwnd != 0) StartCore();
         }
         catch (Exception ex)
         {
@@ -197,14 +227,29 @@ sealed class ReplayBuffer : IDisposable
 
     public void Stop()
     {
-        lock (_gate) StopCore();
+        lock (_gate)
+        {
+            _armed = false;
+            StopFollow();
+            StopFfmpeg();
+            _status = "paused";
+            TryLowLatency(false);
+            TryTrim();
+        }
     }
 
-    void StopCore()
+    void EnsureFollow() =>
+        _follow ??= new System.Threading.Timer(Follow, null, 750, 750);
+
+    void StopFollow()
     {
-        Interlocked.Increment(ref _generation);
         _follow?.Dispose();
         _follow = null;
+    }
+
+    void StopFfmpeg()
+    {
+        Interlocked.Increment(ref _generation);
         var proc = _ffmpeg;
         _ffmpeg = null;
         if (proc is not null)
@@ -224,8 +269,40 @@ sealed class ReplayBuffer : IDisposable
         _audio = null;
         _mic?.Dispose();
         _mic = null;
-        _status = "paused";
     }
+
+    static string VideoFilter(nint hwnd)
+    {
+        var id = $"hwnd={(ulong)hwnd}";
+        var scale = GameWindow.BiggerThan1080(hwnd)
+            ? ":width=1920:height=1080:resize_mode=scale:scale_mode=bilinear"
+            : "";
+        return $"gfxcapture={id}{scale}:max_framerate=60:capture_cursor=0:display_border=0";
+    }
+
+    static void TryLowLatency(bool on)
+    {
+        try
+        {
+            System.Runtime.GCSettings.LatencyMode = on
+                ? System.Runtime.GCLatencyMode.SustainedLowLatency
+                : System.Runtime.GCLatencyMode.Interactive;
+        }
+        catch { }
+    }
+
+    static void TryTrim()
+    {
+        try
+        {
+            using var p = Process.GetCurrentProcess();
+            EmptyWorkingSet(p.Handle);
+        }
+        catch { }
+    }
+
+    [System.Runtime.InteropServices.DllImport("psapi.dll")]
+    static extern bool EmptyWorkingSet(nint hProcess);
 
     public async Task<string?> SaveAsync()
     {
