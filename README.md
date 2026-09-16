@@ -19,7 +19,7 @@ From this repo on a Windows PC:
 
 Click the tray icon for settings. Change the hotkey, length, quality, and microphone there. **View clips** / **Open last** / recent files are in that window.
 
-Captures the game window, including exclusive fullscreen. If a title still comes out black, run Afterimage as Administrator (required when the game is elevated). Some anti-cheat will block any capture.
+Captures the game window, including exclusive fullscreen. NVENC runs only while a game is open. Status **Waiting** means the desktop is idle. If a title still comes out black, run Afterimage as Administrator (required when the game is elevated). Some anti-cheat will block any capture.
 
 ## Mac
 
