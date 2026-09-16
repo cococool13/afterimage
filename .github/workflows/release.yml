@@ -27,7 +27,6 @@ jobs:
           -p:EnableCompressionInSingleFile=true
           -o publish
       - name: Sign
-        if: ${{ secrets.WINDOWS_CERT_PFX != '' }}
         env:
           WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
