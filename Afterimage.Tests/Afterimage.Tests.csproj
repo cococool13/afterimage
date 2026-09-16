@@ -11,5 +11,6 @@
   <ItemGroup>
     <Compile Include="..\SegmentPicker.cs" Link="SegmentPicker.cs" />
     <Compile Include="..\ClipName.cs" Link="ClipName.cs" />
+    <Compile Include="..\GameWindow.cs" Link="GameWindow.cs" />
   </ItemGroup>
 </Project>

@@ -5,15 +5,20 @@ namespace Afterimage;
 sealed class ReplayBuffer : IDisposable
 {
     readonly Settings _settings;
+    readonly object _gate = new();
     Process? _ffmpeg;
     LoopbackPipe? _audio;
+    System.Threading.Timer? _follow;
     string? _ffmpegPath;
+    nint _hwnd;
     int _saving;
     int _generation;
 
     public ReplayBuffer(Settings settings) => _settings = settings;
 
     string _status = "starting";
+
+    public string TargetName { get; private set; } = "";
 
     public bool IsRunning
     {
@@ -40,7 +45,12 @@ sealed class ReplayBuffer : IDisposable
 
     public void Start()
     {
-        Stop();
+        lock (_gate) StartCore();
+    }
+
+    void StartCore()
+    {
+        StopCore();
         if (_ffmpegPath is null) throw new InvalidOperationException("ffmpeg missing");
 
         Directory.CreateDirectory(Paths.Buffer);
@@ -49,6 +59,13 @@ sealed class ReplayBuffer : IDisposable
             try { File.Delete(leftover); } catch { }
         }
         Directory.CreateDirectory(_settings.ClipsFolder);
+
+        var target = GameWindow.Pick(_hwnd);
+        _hwnd = target.Hwnd;
+        TargetName = target.Name;
+        var video = target.Hwnd != 0
+            ? $"gfxcapture=hwnd={(ulong)target.Hwnd}:width=1920:height=1080:resize_mode=scale:scale_mode=bilinear:max_framerate=60:capture_cursor=0:display_border=0"
+            : "gfxcapture=monitor_idx=0:width=1920:height=1080:resize_mode=scale:scale_mode=bilinear:max_framerate=60:capture_cursor=0:display_border=0";
 
         var pipeName = "ClipAudio-" + Environment.ProcessId;
         var wrap = _settings.Seconds + 4;
@@ -59,8 +76,7 @@ sealed class ReplayBuffer : IDisposable
             "-fflags", "+genpts",
             "-init_hw_device", "d3d11va=hw",
             "-filter_hw_device", "hw",
-            "-filter_complex",
-            "gfxcapture=monitor_idx=0:width=1920:height=1080:resize_mode=scale:scale_mode=bilinear:max_framerate=60:capture_cursor=0:display_border=0",
+            "-filter_complex", video,
         };
 
         try
@@ -110,16 +126,66 @@ sealed class ReplayBuffer : IDisposable
             Path.Combine(Paths.Buffer, "seg_%03d.ts"),
         ]);
 
-        var proc = Ffmpeg.Start(_ffmpegPath, args, belowNormal: true, redirectError: false);
+        var proc = Ffmpeg.Start(_ffmpegPath, args, belowNormal: true, redirectError: false, raiseEvents: true);
         Interlocked.Increment(ref _generation);
+        var gen = _generation;
+        var started = DateTime.UtcNow;
+        void Fallback(object? o, EventArgs? e)
+        {
+            if (gen != Volatile.Read(ref _generation)) return;
+            if (DateTime.UtcNow - started < TimeSpan.FromSeconds(3) && _hwnd != 0)
+            {
+                Log.Line("window capture died; falling back to monitor");
+                lock (_gate)
+                {
+                    if (gen != Volatile.Read(ref _generation)) return;
+                    _hwnd = 0;
+                    TargetName = "";
+                    StartCore();
+                }
+            }
+        }
+        proc.Exited += Fallback;
+        if (proc.HasExited) Fallback(null, null);
         _ffmpeg = proc;
         _status = "recording";
-        Log.Line($"buffer start {_settings.Seconds}s 1080p nvenc");
+        _follow = new System.Threading.Timer(Follow, null, 1000, 1000);
+        Log.Line($"buffer start {_settings.Seconds}s 1080p {(target.Hwnd == 0 ? "monitor" : target.Name)}");
+    }
+
+    void Follow(object? _)
+    {
+        if (!Monitor.TryEnter(_gate)) return;
+        try
+        {
+            if (_ffmpegPath is null || Volatile.Read(ref _saving) != 0) return;
+            if (_ffmpeg is null || _ffmpeg.HasExited) return;
+            var next = GameWindow.Pick(_hwnd);
+            if (next.Hwnd == _hwnd) return;
+            if (next.Hwnd == 0 && _hwnd != 0 && GameWindow.IsAlive(_hwnd)) return;
+            Log.Line($"retarget {(next.Hwnd == 0 ? "monitor" : next.Name)}");
+            StartCore();
+        }
+        catch (Exception ex)
+        {
+            Log.Line("follow: " + ex.Message);
+        }
+        finally
+        {
+            Monitor.Exit(_gate);
+        }
     }
 
     public void Stop()
     {
+        lock (_gate) StopCore();
+    }
+
+    void StopCore()
+    {
         Interlocked.Increment(ref _generation);
+        _follow?.Dispose();
+        _follow = null;
         var proc = _ffmpeg;
         _ffmpeg = null;
         if (proc is not null)

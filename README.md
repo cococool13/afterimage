@@ -16,7 +16,7 @@ dotnet publish Afterimage.csproj -c Release -r win-x64 --self-contained false -o
 
 First run downloads FFmpeg into `%LOCALAPPDATA%\Afterimage\ffmpeg`. Click the tray icon for settings. **View clips** opens the folder.
 
-Play **borderless windowed**. Exclusive fullscreen can capture black. If a game runs as Administrator, Afterimage must too.
+Captures the game window, including exclusive fullscreen. If a title still comes out black, run Afterimage as Administrator (required when the game is elevated). Some anti-cheat will block any capture.
 
 ## Mac
 

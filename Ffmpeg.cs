@@ -8,7 +8,7 @@ static class Ffmpeg
 {
     const string ReleaseZip = "https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip";
 
-    public static Process Start(string exe, IReadOnlyList<string> args, bool belowNormal, bool redirectError = true)
+    public static Process Start(string exe, IReadOnlyList<string> args, bool belowNormal, bool redirectError = true, bool raiseEvents = false)
     {
         var psi = new ProcessStartInfo
         {
@@ -18,7 +18,7 @@ static class Ffmpeg
             RedirectStandardError = redirectError,
         };
         foreach (var arg in args) psi.ArgumentList.Add(arg);
-        var proc = new Process { StartInfo = psi };
+        var proc = new Process { StartInfo = psi, EnableRaisingEvents = raiseEvents };
         proc.Start();
         if (belowNormal)
         {

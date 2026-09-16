@@ -154,7 +154,9 @@ sealed class SettingsForm : Form
     void RefreshState()
     {
         var on = _buffer.IsRunning;
-        _status.Text = on ? "Recording" : Title(_buffer.Status);
+        _status.Text = on
+            ? (string.IsNullOrEmpty(_buffer.TargetName) ? "Recording" : "Recording · " + _buffer.TargetName)
+            : Title(_buffer.Status);
         _dot.BackColor = on ? Theme.Mint : Theme.Ember;
         _pause.Text = on ? "Pause" : "Resume";
         _folder.Text = _settings.ClipsFolder;
