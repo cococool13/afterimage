@@ -13,8 +13,11 @@ static class GameWindow
         "startmenuexperiencehost", "textinputhost", "lockapp", "dwm",
         "afterimage", "gamebar", "gamebarftw", "xboxgamebarwidgets",
         "nvcontainer", "nvsphelper64", "nvidia share", "nvidia overlay",
+        "nvidia app", "nvidiageforcenow",
         "logonui", "csrss", "conhost", "runtimebroker",
-        "systemsettings", "taskmgr",
+        "systemsettings", "taskmgr", "applicationframehost",
+        "discord", "discordptb", "discordcanary", "discorddevelopment",
+        "steam", "steamwebhelper", "gameoverlayui",
     };
 
     public static bool IsSkippedProcess(string name)
@@ -38,6 +41,8 @@ static class GameWindow
         Check(IsSkippedProcess("explorer"), "explorer");
         Check(IsSkippedProcess("EXPLORER.EXE"), "exe suffix");
         Check(IsSkippedProcess("Afterimage"), "self");
+        Check(IsSkippedProcess("Discord.exe"), "discord");
+        Check(IsSkippedProcess("steamwebhelper"), "steam overlay");
         Check(!IsSkippedProcess("hl2"), "source game");
         Check(!IsSkippedProcess("FortniteClient-Win64-Shipping"), "fortnite");
         Check(!IsSkippedProcess("r5apex"), "apex");

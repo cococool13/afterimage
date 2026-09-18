@@ -17,7 +17,9 @@ sealed class App : ApplicationContext
     readonly IntPtr _hook;
     readonly ContextMenuStrip _rightMenu;
     SettingsForm? _window;
+    readonly Thread? _showThread;
     bool _busy;
+    bool _stopShow;
     long _lastF8;
 
     public App()
@@ -55,6 +57,11 @@ sealed class App : ApplicationContext
         _hook = Native.SetWindowsHookEx(WhKeyboardLl, _hookProc, Native.GetModuleHandle(null), 0);
         if (_hook == IntPtr.Zero) Log.Line("hotkey hook failed");
 
+        _showThread = Program.ShowEvent is null
+            ? null
+            : new Thread(WaitShow) { IsBackground = true, Name = "afterimage-show" };
+        _showThread?.Start();
+
         EventHandler? once = null;
         once = (_, _) =>
         {
@@ -62,6 +69,35 @@ sealed class App : ApplicationContext
             _ = ReadyAsync();
         };
         Application.Idle += once;
+    }
+
+    void WaitShow()
+    {
+        var ev = Program.ShowEvent;
+        if (ev is null) return;
+        try
+        {
+            while (!Volatile.Read(ref _stopShow))
+            {
+                ev.WaitOne();
+                if (Volatile.Read(ref _stopShow)) return;
+                _ui.Post(_ => BringUp(), null);
+            }
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    void BringUp()
+    {
+        foreach (Form f in Application.OpenForms)
+        {
+            if (f.WindowState == FormWindowState.Minimized)
+                f.WindowState = FormWindowState.Normal;
+            f.Show();
+            f.Activate();
+            return;
+        }
+        ShowSettings();
     }
 
     async Task ReadyAsync()
@@ -126,6 +162,13 @@ sealed class App : ApplicationContext
         _busy = true;
         try
         {
+            if (!_buffer.IsRunning)
+            {
+                SetTip(_buffer.Armed ? "no game" : "paused");
+                if (_settings.PlaySound) Tick.Fail();
+                _ = RestoreTip();
+                return;
+            }
             var path = await _buffer.SaveAsync();
             if (path is not null) SetTip();
             if (!_settings.PlaySound) return;
@@ -141,6 +184,12 @@ sealed class App : ApplicationContext
         {
             _busy = false;
         }
+    }
+
+    async Task RestoreTip()
+    {
+        await Task.Delay(2000);
+        if (!_busy) SetTip();
     }
 
     IntPtr OnHook(int code, IntPtr wParam, IntPtr lParam)
@@ -178,6 +227,9 @@ sealed class App : ApplicationContext
 
     protected override void ExitThreadCore()
     {
+        Volatile.Write(ref _stopShow, true);
+        try { Program.ShowEvent?.Set(); } catch { }
+        _showThread?.Join(500);
         if (_hook != IntPtr.Zero) Native.UnhookWindowsHookEx(_hook);
         _window?.Close();
         _buffer.Dispose();

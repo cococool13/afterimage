@@ -7,6 +7,7 @@ sealed class WelcomeForm : Form
     readonly Label _status;
     readonly ProgressBar _bar;
     readonly Button _done;
+    bool _ready;
 
     public WelcomeForm(Settings settings, ReplayBuffer buffer)
     {
@@ -75,6 +76,7 @@ sealed class WelcomeForm : Form
         Shown += async (_, _) => await Setup();
         FormClosed += (_, _) =>
         {
+            if (!_ready) return;
             _settings.Onboarded = true;
             _settings.Save();
         };
@@ -98,15 +100,17 @@ sealed class WelcomeForm : Form
                 _status.Text = n >= 100 ? "Ready." : $"Downloading encoder… {n}%";
             });
             await _buffer.EnsureFfmpegAsync(CancellationToken.None, progress);
+            if (!Gpu.HasNvidia())
+            {
+                if (IsDisposed) return;
+                _status.Text = "Needs an NVIDIA GPU.";
+                ReadyButton("Got it");
+                return;
+            }
             await Task.Run(() => _buffer.Start());
             if (IsDisposed) return;
             _status.Text = "Ready. Start a game, then press " + Hotkey.Label(_settings.HotkeyVk) + ".";
-            _bar.Style = ProgressBarStyle.Continuous;
-            _bar.Value = 100;
-            _done.Enabled = true;
-            _done.Text = "Got it";
-            _done.BackColor = Theme.Ash;
-            _done.ForeColor = Theme.AshText;
+            ReadyButton("Got it");
         }
         catch (Exception ex)
         {
@@ -116,6 +120,17 @@ sealed class WelcomeForm : Form
             _done.Enabled = true;
             _done.Text = "Close";
         }
+    }
+
+    void ReadyButton(string text)
+    {
+        _bar.Style = ProgressBarStyle.Continuous;
+        _bar.Value = 100;
+        _done.Enabled = true;
+        _done.Text = text;
+        _done.BackColor = Theme.Ash;
+        _done.ForeColor = Theme.AshText;
+        _ready = true;
     }
 
     void Finish() => Close();

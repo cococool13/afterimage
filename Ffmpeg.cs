@@ -33,10 +33,7 @@ static class Ffmpeg
         if (File.Exists(beside)) return beside;
 
         var cached = Path.Combine(Paths.FfmpegDir, "ffmpeg.exe");
-        if (File.Exists(cached)) return cached;
-
-        var onPath = FindOnPath();
-        return onPath;
+        return File.Exists(cached) ? cached : null;
     }
 
     public static async Task<string> EnsureAsync(CancellationToken cancel, IProgress<int>? progress = null)
@@ -53,7 +50,7 @@ static class Ffmpeg
         Log.Line("downloading ffmpeg");
         progress?.Report(-1);
         using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
-        http.DefaultRequestHeaders.UserAgent.ParseAdd("Afterimage/1.2");
+        http.DefaultRequestHeaders.UserAgent.ParseAdd("Afterimage/1.4");
         using (var response = await http.GetAsync(ReleaseZip, HttpCompletionOption.ResponseHeadersRead, cancel))
         {
             response.EnsureSuccessStatusCode();
@@ -81,8 +78,9 @@ static class Ffmpeg
         }
 
         var dest = Path.Combine(Paths.FfmpegDir, "ffmpeg.exe");
-        using (var zip = ZipFile.OpenRead(zipPath))
+        try
         {
+            using var zip = ZipFile.OpenRead(zipPath);
             var entry = zip.Entries.FirstOrDefault(e =>
                 e.Name.Equals("ffmpeg.exe", StringComparison.OrdinalIgnoreCase)
                 && e.FullName.Replace('\\', '/').Contains("/bin/", StringComparison.OrdinalIgnoreCase))
@@ -90,26 +88,15 @@ static class Ffmpeg
             if (entry is null) throw new InvalidOperationException("ffmpeg.exe missing from zip");
             entry.ExtractToFile(dest, overwrite: true);
         }
+        catch
+        {
+            try { File.Delete(dest); } catch { }
+            throw;
+        }
         progress?.Report(95);
         try { File.Delete(zipPath); } catch { }
         Log.Line("ffmpeg ready: " + dest);
         progress?.Report(100);
         return dest;
-    }
-
-    static string? FindOnPath()
-    {
-        var path = Environment.GetEnvironmentVariable("PATH");
-        if (string.IsNullOrEmpty(path)) return null;
-        foreach (var dir in path.Split(Path.PathSeparator))
-        {
-            try
-            {
-                var candidate = Path.Combine(dir, "ffmpeg.exe");
-                if (File.Exists(candidate)) return candidate;
-            }
-            catch { }
-        }
-        return null;
     }
 }

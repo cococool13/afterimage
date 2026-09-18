@@ -66,7 +66,7 @@ sealed class SettingsForm : Form
             {
                 _settings.Seconds = n;
                 _settings.Save();
-                if (_buffer.IsRunning) _buffer.Start();
+                RestartBuffer();
                 PaintLength();
             };
             _length[i] = btn;
@@ -112,7 +112,7 @@ sealed class SettingsForm : Form
         {
             _settings.Mic = _mic.Checked;
             _settings.Save();
-            if (_buffer.IsRunning) _buffer.Start();
+            RestartBuffer();
         };
         Controls.Add(_mic);
         y += 26;
@@ -194,7 +194,7 @@ sealed class SettingsForm : Form
             try
             {
                 await _buffer.EnsureFfmpegAsync(CancellationToken.None);
-                _buffer.Start();
+                await Task.Run(() => _buffer.Start());
             }
             catch (Exception ex)
             {
@@ -202,6 +202,19 @@ sealed class SettingsForm : Form
             }
         }
         RefreshState();
+    }
+
+    void RestartBuffer()
+    {
+        if (!_buffer.IsRunning) return;
+        _ = RestartBufferAsync();
+    }
+
+    async Task RestartBufferAsync()
+    {
+        try { await Task.Run(() => _buffer.Start()); }
+        catch (Exception ex) { Log.Line(ex.ToString()); }
+        if (!IsDisposed) RefreshState();
     }
 
     void OnKeyDown(object? sender, KeyEventArgs e)
@@ -226,7 +239,7 @@ sealed class SettingsForm : Form
     {
         _settings.Quality = quality;
         _settings.Save();
-        if (_buffer.IsRunning) _buffer.Start();
+        RestartBuffer();
         PaintQuality();
     }
 

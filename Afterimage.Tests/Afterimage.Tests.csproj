@@ -13,5 +13,6 @@
     <Compile Include="..\ClipName.cs" Link="ClipName.cs" />
     <Compile Include="..\GameWindow.cs" Link="GameWindow.cs" />
     <Compile Include="..\ClipCap.cs" Link="ClipCap.cs" />
+    <Compile Include="..\CaptureGraph.cs" Link="CaptureGraph.cs" />
   </ItemGroup>
 </Project>

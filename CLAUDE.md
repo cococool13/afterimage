@@ -17,7 +17,7 @@ Build and run the app on the Windows PC. A Mac can compile and run `Afterimage.T
 Windows:
 
 ```powershell
-dotnet publish Afterimage.csproj -c Release -r win-x64 --self-contained false -o .\publish
+dotnet publish Afterimage.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o .\publish
 dotnet run --project Afterimage.Tests
 ```
 
@@ -40,7 +40,7 @@ cd site && npx wrangler deploy
 3. F8 is a low-level hook. Elevated games need Afterimage elevated.
 4. Filenames: `Sep 15 2.41 PM.mp4` via `ClipName`.
 5. Site is a single no-scroll poster: Honk-locked sky `#254fb1`, sunshine wordmark `#ffe400`, white Download button. Do not add sections or a scrollbar.
-6. First run relocates the exe to `%LOCALAPPDATA%\Programs\Afterimage` and shows WelcomeForm while FFmpeg downloads. `Onboarded` in settings.json.
-7. Hotkey is click-to-bind. Mic and Fast/Quality restart the buffer. GitHub Actions on `v*` tags publishes `Afterimage.zip`.
-8. Clip cap: 50 files or 5 GB. Admin relaunch uses `runas` and a Global mutex. Signing is `scripts/sign.ps1` when `WINDOWS_CERT_PFX` is set.
+6. First run relocates the exe to `%LOCALAPPDATA%\Programs\Afterimage` and shows WelcomeForm while FFmpeg downloads. `Onboarded` is set only after that succeeds.
+7. Hotkey is click-to-bind. Mic and Fast/Quality restart the buffer. A second launch signals the running instance to show settings. GitHub Actions on `v*` tags publishes `Afterimage.zip`.
+8. Clip cap: 50 files or 5 GB. Admin relaunch uses `runas` and a Global mutex. Signing is `scripts/sign.ps1` when `WINDOWS_CERT_PFX` is set. Use the bundled/cached FFmpeg, not PATH.
 9. Out of scope: multi-monitor picker, 120 fps, HDR, AMD/Intel encode.

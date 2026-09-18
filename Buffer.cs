@@ -63,6 +63,15 @@ sealed class ReplayBuffer : IDisposable
     {
         StopFfmpeg();
         if (_ffmpegPath is null) throw new InvalidOperationException("ffmpeg missing");
+        if (!Gpu.HasNvidia())
+        {
+            _hwnd = 0;
+            TargetName = "";
+            TargetPid = 0;
+            _status = "need NVIDIA";
+            TryTrim();
+            return;
+        }
         EnsureFollow();
 
         Directory.CreateDirectory(Paths.Buffer);
@@ -93,19 +102,25 @@ sealed class ReplayBuffer : IDisposable
         var wrap = _settings.Seconds + 4;
         var args = new List<string>
         {
-            "-hide_banner", "-loglevel", "quiet", "-nostdin", "-nostats", "-y",
+            "-hide_banner", "-loglevel", "error", "-nostdin", "-nostats", "-y",
             "-threads", "1", "-filter_threads", "1",
             "-fflags", "+genpts",
             "-init_hw_device", "d3d11va=hw",
             "-filter_hw_device", "hw",
         };
 
+        var pcm = 0;
         try
         {
             _audio = PcmPipe.StartLoopback(pipeName);
+            pcm = 1;
             if (_settings.Mic)
             {
-                try { _mic = PcmPipe.StartMic(micName); }
+                try
+                {
+                    _mic = PcmPipe.StartMic(micName);
+                    pcm = 2;
+                }
                 catch (Exception ex)
                 {
                     Log.Line("mic skipped: " + ex.Message);
@@ -113,31 +128,26 @@ sealed class ReplayBuffer : IDisposable
                     _mic = null;
                 }
             }
-
-            if (_mic is not null)
-            {
-                AddPcmInput(args, _audio, pipeName);
-                AddPcmInput(args, _mic, micName);
-                args.AddRange([
-                    "-filter_complex",
-                    video + "[v];[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=0[a]",
-                    "-map", "[v]",
-                    "-map", "[a]",
-                ]);
-            }
-            else
-            {
-                args.AddRange(["-filter_complex", video]);
-                AddPcmInput(args, _audio, pipeName);
-                args.AddRange(["-map", "0:v:0", "-map", "1:a:0"]);
-            }
+            if (_audio is not null) AddPcmInput(args, _audio, pipeName);
+            if (_mic is not null) AddPcmInput(args, _mic, micName);
         }
         catch (Exception ex)
         {
             Log.Line("audio skipped: " + ex.Message);
             _audio?.Dispose();
             _audio = null;
-            args.AddRange(["-filter_complex", video]);
+            _mic?.Dispose();
+            _mic = null;
+            pcm = 0;
+        }
+
+        var graph = CaptureGraph.Build(video, pcm);
+        args.Add("-filter_complex");
+        args.Add(graph.Filter);
+        foreach (var map in graph.Maps)
+        {
+            args.Add("-map");
+            args.Add(map);
         }
 
         args.AddRange([
@@ -165,13 +175,15 @@ sealed class ReplayBuffer : IDisposable
             Path.Combine(Paths.Buffer, "seg_%03d.ts"),
         ]);
 
-        var proc = Ffmpeg.Start(_ffmpegPath, args, belowNormal: true, redirectError: false, raiseEvents: true);
+        var proc = Ffmpeg.Start(_ffmpegPath, args, belowNormal: true, redirectError: true, raiseEvents: true);
+        var errTask = proc.StandardError.ReadToEndAsync();
         Interlocked.Increment(ref _generation);
         var gen = _generation;
         var started = DateTime.UtcNow;
         void Fallback(object? o, EventArgs? e)
         {
             if (gen != Volatile.Read(ref _generation)) return;
+            _ = LogFfmpegError(errTask);
             if (DateTime.UtcNow - started < TimeSpan.FromSeconds(3) && _hwnd != 0)
             {
                 Log.Line("window capture died; waiting for a game");
@@ -362,6 +374,16 @@ sealed class ReplayBuffer : IDisposable
         {
             Interlocked.Exchange(ref _saving, 0);
         }
+    }
+
+    static async Task LogFfmpegError(Task<string> errTask)
+    {
+        try
+        {
+            var err = (await errTask.ConfigureAwait(false)).Trim();
+            if (err.Length > 0) Log.Line("ffmpeg: " + err);
+        }
+        catch { }
     }
 
     static void AddPcmInput(List<string> args, PcmPipe pipe, string pipeName) =>

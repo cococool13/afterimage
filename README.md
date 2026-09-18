@@ -21,7 +21,7 @@ From this repo on a Windows PC:
 .\install.ps1
 ```
 
-Click the tray icon for settings. Change the hotkey, length, quality, and microphone there. **View clips** / **Open last** / recent files are in that window. Old clips are deleted past 50 files or 5 GB. If a game is running as Administrator, use **Run as administrator**.
+Click the tray icon for settings, or run Afterimage again to bring that window forward. Change the hotkey, length, quality, and microphone there. **View clips** / **Open last** / recent files are in that window. Old clips are deleted past 50 files or 5 GB. If a game is running as Administrator, use **Run as administrator**.
 
 Signed releases need GitHub secrets `WINDOWS_CERT_PFX` (base64 PFX) and `WINDOWS_CERT_PASSWORD`. Without them the zip is unsigned and SmartScreen may warn once.
 
