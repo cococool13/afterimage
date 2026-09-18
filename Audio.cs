@@ -1,4 +1,5 @@
 using System.IO.Pipes;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 
 namespace Afterimage;

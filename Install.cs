@@ -82,7 +82,7 @@ static class Install
             if (string.IsNullOrEmpty(exe) || !File.Exists(exe)) return;
             using var key = Registry.CurrentUser.CreateSubKey(UninstallKey);
             if (key is null) return;
-            var ver = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "1.5.1";
+            var ver = typeof(Program).Assembly.GetName().Version?.ToString(3) ?? "1.5.2";
             key.SetValue("DisplayName", "Afterimage");
             key.SetValue("DisplayIcon", exe);
             key.SetValue("DisplayVersion", ver);
