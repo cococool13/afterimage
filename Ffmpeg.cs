@@ -128,5 +128,7 @@ static class Ffmpeg
             ?? zip.Entries.FirstOrDefault(e => e.Name.Equals("ffmpeg.exe", StringComparison.OrdinalIgnoreCase));
         if (entry is null) throw new InvalidOperationException("ffmpeg.exe missing from zip");
         entry.ExtractToFile(dest, overwrite: true);
+        if (!File.Exists(dest) || new FileInfo(dest).Length == 0)
+            throw new InvalidOperationException("ffmpeg extract empty");
     }
 }

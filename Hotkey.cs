@@ -2,9 +2,9 @@ namespace Afterimage;
 
 static class Hotkey
 {
-    public const int DefaultVk = 0x77; // F8
+    public const int DefaultVk = SettingsLogic.DefaultHotkeyVk;
 
-    public static int Normalize(int vk) => vk is > 0 and < 256 ? vk : DefaultVk;
+    public static int Normalize(int vk) => SettingsLogic.ClampHotkey(vk);
 
     public static string Label(int vk)
     {
@@ -20,15 +20,13 @@ static class Hotkey
         }
     }
 
-    public static bool IsModifier(Keys key) =>
-        key is Keys.ShiftKey or Keys.ControlKey or Keys.Menu or Keys.LWin or Keys.RWin
-            or Keys.LShiftKey or Keys.RShiftKey or Keys.LControlKey or Keys.RControlKey
-            or Keys.LMenu or Keys.RMenu;
+    public static bool IsModifier(Keys key) => SettingsLogic.IsModifierVk((int)key);
 
     public static int SelfCheck()
     {
         if (Normalize(0) != DefaultVk) throw new InvalidOperationException("fail: default");
         if (Normalize(0x78) != 0x78) throw new InvalidOperationException("fail: f9");
+        if (Normalize(0x12) != DefaultVk) throw new InvalidOperationException("fail: alt vk");
         if (IsModifier(Keys.F8)) throw new InvalidOperationException("fail: f8");
         if (!IsModifier(Keys.LMenu) || !IsModifier(Keys.RMenu)) throw new InvalidOperationException("fail: alt");
         Console.WriteLine("hotkey ok");

@@ -13,6 +13,27 @@ public static class SegmentPicker
         return ordered.Take(ordered.Length - 1).TakeLast(Math.Max(1, seconds)).ToArray();
     }
 
+    public static string ConcatLine(string path)
+    {
+        if (string.IsNullOrEmpty(path)) throw new ArgumentException("path");
+        return "file '" + path.Replace('\\', '/').Replace("'", @"'\''") + "'";
+    }
+
+    public static string[] CopyForConcat(IEnumerable<FileInfo> files, string destDir)
+    {
+        Directory.CreateDirectory(destDir);
+        var lines = new List<string>();
+        var i = 0;
+        foreach (var f in files)
+        {
+            var copy = Path.Combine(destDir, $"{i:000}.ts");
+            f.CopyTo(copy, overwrite: true);
+            lines.Add(ConcatLine(copy));
+            i++;
+        }
+        return lines.ToArray();
+    }
+
     public static int SelfCheck()
     {
         var dir = Directory.CreateTempSubdirectory("clip-test-");
@@ -48,6 +69,18 @@ public static class SegmentPicker
             var withZero = Pick([zero, files[0], files[1], files[2]], 2);
             Check(withZero.All(f => f.Length > 0), "skip zero-length");
             Check(withZero.Length == 2, "two complete after skipping empty and newest");
+
+            Check(ConcatLine("/tmp/a.ts") == "file '/tmp/a.ts'", "concat simple");
+            Check(
+                ConcatLine(@"C:\x\O'Brien\a.ts") == @"file 'C:/x/O'\''Brien/a.ts'",
+                "concat quote");
+            var stage = Path.Combine(dir.FullName, "mux");
+            var lines = CopyForConcat([files[1], files[2]], stage);
+            Check(lines.Length == 2, "stage count");
+            Check(File.Exists(Path.Combine(stage, "000.ts")), "stage first");
+            Check(File.Exists(Path.Combine(stage, "001.ts")), "stage second");
+            Check(lines[0].Contains("000.ts", StringComparison.Ordinal), "stage line");
+            Check(File.ReadAllBytes(Path.Combine(stage, "000.ts")).Length == files[1].Length, "stage bytes");
 
             Console.WriteLine("self-check ok");
             return 0;

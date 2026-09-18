@@ -334,39 +334,80 @@ sealed class ReplayBuffer : IDisposable
             else return null;
 
             if (!Directory.Exists(Paths.Buffer)) return null;
-            var picked = SegmentPicker.Pick(new DirectoryInfo(Paths.Buffer).EnumerateFiles("seg_*.ts"), _settings.Seconds);
+            var seconds = _settings.Seconds;
+            var picked = SegmentPicker.Pick(new DirectoryInfo(Paths.Buffer).EnumerateFiles("seg_*.ts"), seconds);
             if (picked.Length == 0) return null;
 
             Directory.CreateDirectory(_settings.ClipsFolder);
             var existing = Directory.EnumerateFiles(_settings.ClipsFolder).Select(p => Path.GetFileName(p)!);
             var dest = Path.Combine(_settings.ClipsFolder, ClipName.FileName(DateTime.Now, existing!));
-            Directory.CreateDirectory(Paths.Root);
-            var listPath = Path.Combine(Paths.Root, "concat.txt");
-            await File.WriteAllLinesAsync(listPath, picked.Select(static f =>
-                "file '" + f.FullName.Replace('\\', '/').Replace("'", @"'\''") + "'")).ConfigureAwait(false);
-
-            using var mux = Ffmpeg.Start(_ffmpegPath, [
-                "-hide_banner", "-loglevel", "error", "-nostdin", "-threads", "1", "-y",
-                "-fflags", "+genpts",
-                "-f", "concat", "-safe", "0", "-i", listPath,
-                "-c", "copy", dest,
-            ], belowNormal: true, redirectError: true);
-            var errTask = mux.StandardError.ReadToEndAsync();
-            await mux.WaitForExitAsync().ConfigureAwait(false);
-            var err = await errTask.ConfigureAwait(false);
-            if (mux.ExitCode != 0 || !File.Exists(dest))
+            var workDir = Path.Combine(Paths.Root, "mux");
+            try { if (Directory.Exists(workDir)) Directory.Delete(workDir, true); } catch { }
+            Directory.CreateDirectory(workDir);
+            try
             {
-                Log.Line("save failed: " + err);
-                return null;
+                string[] lines;
+                try
+                {
+                    lines = SegmentPicker.CopyForConcat(picked, workDir);
+                }
+                catch (Exception ex)
+                {
+                    Log.Line("stage failed: " + ex.Message);
+                    return null;
+                }
+                var listPath = Path.Combine(workDir, "concat.txt");
+                await File.WriteAllLinesAsync(listPath, lines).ConfigureAwait(false);
+
+                using var mux = Ffmpeg.Start(_ffmpegPath, [
+                    "-hide_banner", "-loglevel", "error", "-nostdin", "-threads", "1", "-y",
+                    "-fflags", "+genpts",
+                    "-f", "concat", "-safe", "0", "-i", listPath,
+                    "-c", "copy", dest,
+                ], belowNormal: true, redirectError: true);
+                var errTask = mux.StandardError.ReadToEndAsync();
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+                try
+                {
+                    await mux.WaitForExitAsync(timeout.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException)
+                {
+                    try { mux.Kill(entireProcessTree: true); } catch { }
+                    try { mux.WaitForExit(3000); } catch { }
+                    Log.Line("save timed out");
+                    TryDelete(dest);
+                    return null;
+                }
+                var err = await errTask.ConfigureAwait(false);
+                var len = 0L;
+                try { if (File.Exists(dest)) len = new FileInfo(dest).Length; } catch { }
+                if (mux.ExitCode != 0 || len == 0)
+                {
+                    Log.Line("save failed: " + err);
+                    TryDelete(dest);
+                    return null;
+                }
+            }
+            finally
+            {
+                try { Directory.Delete(workDir, true); } catch { }
             }
             LastPath = dest;
             if (_settings.CapClips)
             {
-                var n = ClipCap.Prune(
-                    _settings.ClipsFolder,
-                    ClipCap.DefaultMaxFiles,
-                    (long)ClipCap.DefaultMaxGb << 30);
-                if (n > 0) Log.Line("pruned " + n);
+                try
+                {
+                    var n = ClipCap.Prune(
+                        _settings.ClipsFolder,
+                        ClipCap.DefaultMaxFiles,
+                        (long)ClipCap.DefaultMaxGb << 30);
+                    if (n > 0) Log.Line("pruned " + n);
+                }
+                catch (Exception ex)
+                {
+                    Log.Line("prune: " + ex.Message);
+                }
             }
             Log.Line("saved " + dest);
             return dest;
@@ -420,6 +461,11 @@ sealed class ReplayBuffer : IDisposable
             if (best is null || f.LastWriteTimeUtc > best.LastWriteTimeUtc) best = f;
         }
         return best?.Name;
+    }
+
+    static void TryDelete(string path)
+    {
+        try { if (File.Exists(path)) File.Delete(path); } catch { }
     }
 
     public void Dispose() => Stop();

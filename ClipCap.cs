@@ -8,11 +8,31 @@ public static class ClipCap
     public static int Prune(string folder, int maxFiles, long maxBytes)
     {
         if (maxFiles < 1 || maxBytes < 1 || !Directory.Exists(folder)) return 0;
-        var files = new DirectoryInfo(folder).EnumerateFiles("*.mp4")
-            .OrderBy(f => f.LastWriteTimeUtc)
-            .ThenBy(f => f.Name, StringComparer.OrdinalIgnoreCase)
-            .ToList();
-        var total = files.Sum(f => f.Length);
+        var files = new List<FileInfo>();
+        long total = 0;
+        try
+        {
+            foreach (var f in new DirectoryInfo(folder).EnumerateFiles("*.mp4"))
+            {
+                try
+                {
+                    var len = f.Length;
+                    _ = f.LastWriteTimeUtc;
+                    total += len;
+                    files.Add(f);
+                }
+                catch (IOException) { }
+                catch (UnauthorizedAccessException) { }
+            }
+            files.Sort((a, b) =>
+            {
+                var c = a.LastWriteTimeUtc.CompareTo(b.LastWriteTimeUtc);
+                return c != 0 ? c : StringComparer.OrdinalIgnoreCase.Compare(a.Name, b.Name);
+            });
+        }
+        catch (IOException) { return 0; }
+        catch (UnauthorizedAccessException) { return 0; }
+
         var deleted = 0;
         var i = 0;
         while (i < files.Count && (files.Count > maxFiles || total > maxBytes))
