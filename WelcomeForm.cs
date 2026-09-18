@@ -35,9 +35,9 @@ sealed class WelcomeForm : Form
             ForeColor = Theme.Text,
         });
         y += 36;
-        Controls.Add(Line($"Press {Hotkey.Label(_settings.HotkeyVk)} in a game to save the last {_settings.Seconds} seconds.", y));
+        Controls.Add(Line($"Press {Hotkey.Label(_settings.HotkeyVk)} in a game to keep the last {_settings.Seconds} seconds.", y));
         y += 36;
-        Controls.Add(Line("Clips land in Videos\\Afterimage. After this, it lives in the tray.", y));
+        Controls.Add(Line("Clips go to Videos → Afterimage. Then it lives by the clock.", y));
         y += 44;
 
         _status = new Label
@@ -92,18 +92,18 @@ sealed class WelcomeForm : Form
                 if (n < 0)
                 {
                     _bar.Style = ProgressBarStyle.Marquee;
-                    _status.Text = "Downloading encoder (one time)…";
+                    _status.Text = "Downloading (one time)…";
                     return;
                 }
                 _bar.Style = ProgressBarStyle.Continuous;
                 _bar.Value = Math.Clamp(n, 0, 100);
-                _status.Text = n >= 100 ? "Ready." : $"Downloading encoder… {n}%";
+                _status.Text = n >= 100 ? "Ready." : $"Downloading… {n}%";
             });
             await _buffer.EnsureFfmpegAsync(CancellationToken.None, progress);
             if (!Gpu.HasNvidia())
             {
                 if (IsDisposed) return;
-                _status.Text = "Needs an NVIDIA GPU.";
+                _status.Text = "Needs an NVIDIA graphics card.";
                 ReadyButton("Got it");
                 return;
             }
@@ -116,7 +116,7 @@ sealed class WelcomeForm : Form
         {
             Log.Line(ex.ToString());
             if (IsDisposed) return;
-            _status.Text = "Could not download the encoder. Open settings to retry.";
+            _status.Text = "Couldn't finish setup. Check the network and try again.";
             _done.Enabled = true;
             _done.Text = "Close";
         }

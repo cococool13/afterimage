@@ -40,7 +40,7 @@ cd site && npx wrangler deploy
 3. F8 is a low-level hook. Elevated games need Afterimage elevated.
 4. Filenames: `Sep 15 2.41 PM.mp4` via `ClipName`.
 5. Site is a single no-scroll poster: Honk-locked sky `#254fb1`, sunshine wordmark `#ffe400`, white Download button. Do not add sections or a scrollbar.
-6. First run relocates the exe to `%LOCALAPPDATA%\Programs\Afterimage` and shows WelcomeForm while FFmpeg downloads. `Onboarded` is set only after that succeeds.
-7. Hotkey is click-to-bind. Mic and Fast/Quality restart the buffer. A second launch signals the running instance to show settings. GitHub Actions on `v*` tags publishes `Afterimage.zip`.
-8. Clip cap: 50 files or 5 GB. Admin relaunch uses `runas` and a Global mutex. Signing is `scripts/sign.ps1` when `WINDOWS_CERT_PFX` is set. Use the bundled/cached FFmpeg, not PATH.
+6. First run relocates the exe to `%LOCALAPPDATA%\Programs\Afterimage`, writes a Start Menu shortcut and HKCU Uninstall key, then shows WelcomeForm. `Onboarded` is set only after setup succeeds. `--uninstall` removes the app and keeps clips.
+7. Hotkey is click-to-bind. Mic and Fast/Quality restart the buffer. A second launch signals the running instance to show settings. GitHub Actions on `v*` tags publishes `Afterimage.exe` (and a zip of that exe). CI tries `scripts/bundle-ffmpeg.ps1` so first run can skip the download.
+8. Clip cap: 50 files or 5 GB. Admin relaunch uses `runas` and a Global mutex. Signing is `scripts/sign.ps1` when `WINDOWS_CERT_PFX` is set. Use bundled/cached FFmpeg, not PATH. New installs start with Windows.
 9. Out of scope: multi-monitor picker, 120 fps, HDR, AMD/Intel encode.

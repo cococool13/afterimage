@@ -6,6 +6,9 @@ obj/
 *.suo
 publish/
 ffmpeg/
+ffmpeg.exe
+ffmpeg.zip
 .DS_Store
 site/node_modules/
+site/.wrangler/
 node_modules/

@@ -54,7 +54,7 @@ sealed class SettingsForm : Form
         Controls.Add(Rule(y));
         y += 16;
 
-        Controls.Add(LabelAt("CLIP LENGTH", 20, y, Theme.UiSmall, Theme.Mute));
+        Controls.Add(LabelAt("Clip length", 20, y, Theme.UiSmall, Theme.Mute));
         y += 22;
         _length = new Button[3];
         var seconds = new[] { 15, 20, 30 };
@@ -74,7 +74,7 @@ sealed class SettingsForm : Form
         }
         y += 44;
 
-        Controls.Add(LabelAt("QUALITY", 20, y, Theme.UiSmall, Theme.Mute));
+        Controls.Add(LabelAt("Quality", 20, y, Theme.UiSmall, Theme.Mute));
         y += 22;
         _quality = new Button[2];
         _quality[0] = Pill("Fast", 20, y, 166, _settings.Quality != "quality");
@@ -85,7 +85,7 @@ sealed class SettingsForm : Form
         Controls.Add(_quality[1]);
         y += 44;
 
-        Controls.Add(LabelAt("HOTKEY", 20, y, Theme.UiSmall, Theme.Mute));
+        Controls.Add(LabelAt("Hotkey", 20, y, Theme.UiSmall, Theme.Mute));
         y += 22;
         _hotkey = Pill(Hotkey.Label(_settings.HotkeyVk), 20, y, 100, true);
         _hotkey.Click += (_, _) =>
@@ -107,7 +107,7 @@ sealed class SettingsForm : Form
         _sound.CheckedChanged += (_, _) => { _settings.PlaySound = _sound.Checked; _settings.Save(); };
         Controls.Add(_sound);
         y += 26;
-        _mic = Check("Record microphone", 20, y, _settings.Mic);
+        _mic = Check("Include microphone", 20, y, _settings.Mic);
         _mic.CheckedChanged += (_, _) =>
         {
             _settings.Mic = _mic.Checked;
@@ -116,14 +116,14 @@ sealed class SettingsForm : Form
         };
         Controls.Add(_mic);
         y += 26;
-        _cap = Check("Delete old clips (50 / 5 GB)", 20, y, _settings.CapClips);
+        _cap = Check("Keep 50 clips or 5 GB", 20, y, _settings.CapClips);
         _cap.CheckedChanged += (_, _) => { _settings.CapClips = _cap.Checked; _settings.Save(); };
         Controls.Add(_cap);
         y += 34;
         Controls.Add(Rule(y));
         y += 12;
 
-        Controls.Add(LabelAt("CLIPS FOLDER", 20, y, Theme.UiSmall, Theme.Mute));
+        Controls.Add(LabelAt("Clips", 20, y, Theme.UiSmall, Theme.Mute));
         y += 18;
         _folder = new Label { Location = new Point(20, y), Size = new Size(250, 32), ForeColor = Theme.Mute, Font = Theme.UiSmall };
         var change = Ghost("Change", 276, y, 84);
@@ -140,7 +140,7 @@ sealed class SettingsForm : Form
         Controls.Add(last);
         y += 44;
 
-        Controls.Add(LabelAt("RECENT", 20, y, Theme.UiSmall, Theme.Mute));
+        Controls.Add(LabelAt("Recent", 20, y, Theme.UiSmall, Theme.Mute));
         y += 18;
         _recent = new Label[3];
         for (var i = 0; i < 3; i++)
@@ -169,9 +169,18 @@ sealed class SettingsForm : Form
         };
         Controls.Add(_admin);
         y += 36;
-        var quitBtn = Ghost("Quit Afterimage", 20, y, 340);
+        var quitBtn = Ghost("Quit", 20, y, 166);
         quitBtn.Click += (_, _) => _quit();
+        var uninstall = Ghost("Uninstall", 194, y, 166);
+        uninstall.Click += (_, _) =>
+        {
+            if (!Install.Confirm()) return;
+            _buffer.Dispose();
+            Install.Remove();
+            _quit();
+        };
         Controls.Add(quitBtn);
+        Controls.Add(uninstall);
 
         KeyDown += OnKeyDown;
         _tick = new System.Windows.Forms.Timer { Interval = 2000 };
@@ -246,9 +255,7 @@ sealed class SettingsForm : Form
     void RefreshState()
     {
         var on = _buffer.IsRunning;
-        _status.Text = on
-            ? (string.IsNullOrEmpty(_buffer.TargetName) ? "Recording" : "Recording · " + _buffer.TargetName)
-            : Title(_buffer.Status);
+        _status.Text = StatusText.Line(on, _buffer.Status, _buffer.TargetName);
         _dot.BackColor = on ? Theme.Mint : _buffer.Armed ? Theme.Ash : Theme.Ember;
         _pause.Text = _buffer.Armed ? "Pause" : "Resume";
         _admin.Visible = !Admin.IsElevated;
@@ -325,9 +332,6 @@ sealed class SettingsForm : Form
         if (path is not null && File.Exists(path)) Shell.Open(path);
         else OpenClips();
     }
-
-    static string Title(string status) =>
-        string.IsNullOrEmpty(status) ? "Paused" : char.ToUpper(status[0]) + status[1..];
 
     static Label LabelAt(string text, int x, int y, Font font, Color color) => new()
     {

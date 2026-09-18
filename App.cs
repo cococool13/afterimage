@@ -26,6 +26,7 @@ sealed class App : ApplicationContext
     {
         _buffer = new ReplayBuffer(_settings);
         Shortcuts.Write();
+        Install.Register();
         _icon = LoadIcon();
         _rightMenu = new ContextMenuStrip();
         _rightMenu.Items.Add("Clip now", null, (_, _) => _ = SaveClip());
@@ -220,9 +221,9 @@ sealed class App : ApplicationContext
 
     void SetTip(string? status = null)
     {
-        status ??= _buffer.Status;
-        var text = "Afterimage — " + Hotkey.Label(_settings.HotkeyVk) + " — " + status;
-        _tray.Text = text.Length <= 63 ? text : "Afterimage";
+        var line = StatusText.Line(_buffer.IsRunning, status ?? _buffer.Status, _buffer.TargetName);
+        var text = "Afterimage — " + Hotkey.Label(_settings.HotkeyVk) + " — " + line;
+        _tray.Text = text.Length <= 63 ? text : (line.Length <= 63 ? line : "Afterimage");
     }
 
     protected override void ExitThreadCore()

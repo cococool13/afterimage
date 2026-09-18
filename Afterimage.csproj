@@ -10,12 +10,13 @@
     <RootNamespace>Afterimage</RootNamespace>
     <AssemblyName>Afterimage</AssemblyName>
     <Product>Afterimage</Product>
-    <Version>1.4.0</Version>
+    <Version>1.5.0</Version>
     <LangVersion>latest</LangVersion>
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
     <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
     <InvariantGlobalization>false</InvariantGlobalization>
     <PublishReadyToRun>true</PublishReadyToRun>
+    <IncludeAllContentForSingleFile>true</IncludeAllContentForSingleFile>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
@@ -29,6 +30,10 @@
   <ItemGroup>
     <Content Include="Assets\afterimage.ico">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="ffmpeg.exe" Condition="Exists('ffmpeg.exe')">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>false</ExcludeFromSingleFile>
     </Content>
   </ItemGroup>
 </Project>

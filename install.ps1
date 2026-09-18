@@ -5,6 +5,9 @@ $dest = Join-Path $env:LOCALAPPDATA "Programs\Afterimage"
 
 Push-Location $root
 try {
+    if (Test-Path (Join-Path $root "scripts\bundle-ffmpeg.ps1")) {
+        try { & (Join-Path $root "scripts\bundle-ffmpeg.ps1") } catch { Write-Host "ffmpeg bundle skipped" }
+    }
     dotnet publish Afterimage.csproj -c Release -r win-x64 --self-contained true `
         -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true `
         -o $dest

@@ -6,7 +6,7 @@ sealed class Settings
 {
     public int Seconds { get; set; } = 20;
     public int HotkeyVk { get; set; } = Hotkey.DefaultVk;
-    public bool StartWithWindows { get; set; }
+    public bool StartWithWindows { get; set; } = true;
     public bool PlaySound { get; set; } = true;
     public bool Mic { get; set; }
     public string Quality { get; set; } = "fast";

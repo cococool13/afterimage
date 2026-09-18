@@ -16,6 +16,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Bundle ffmpeg
+        continue-on-error: true
+        run: powershell -File scripts/bundle-ffmpeg.ps1
       - name: Publish
         run: >
           dotnet publish Afterimage.csproj
@@ -31,9 +34,13 @@ jobs:
           WINDOWS_CERT_PFX: ${{ secrets.WINDOWS_CERT_PFX }}
           WINDOWS_CERT_PASSWORD: ${{ secrets.WINDOWS_CERT_PASSWORD }}
         run: powershell -File scripts/sign.ps1 publish/Afterimage.exe
-      - name: Zip
-        run: Compress-Archive -Path publish\* -DestinationPath Afterimage.zip
+      - name: Stage
+        run: |
+          Copy-Item publish/Afterimage.exe Afterimage.exe
+          Compress-Archive -Path Afterimage.exe -DestinationPath Afterimage.zip -Force
       - uses: softprops/action-gh-release@v2
         with:
-          files: Afterimage.zip
+          files: |
+            Afterimage.exe
+            Afterimage.zip
           generate_release_notes: true
