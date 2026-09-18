@@ -4,14 +4,14 @@ namespace Afterimage;
 
 sealed class Settings
 {
-    public int Seconds { get; set; } = 20;
+    public int Seconds { get; set; } = SettingsLogic.DefaultSeconds;
     public int HotkeyVk { get; set; } = Hotkey.DefaultVk;
-    public bool StartWithWindows { get; set; } = true;
+    public bool StartWithWindows { get; set; } = SettingsLogic.DefaultStartWithWindows;
     public bool PlaySound { get; set; } = true;
     public bool Mic { get; set; }
-    public string Quality { get; set; } = "fast";
-    public bool Onboarded { get; set; }
-    public bool CapClips { get; set; } = true;
+    public string Quality { get; set; } = SettingsLogic.DefaultQuality;
+    public bool Onboarded { get; set; } = SettingsLogic.DefaultOnboarded;
+    public bool CapClips { get; set; } = SettingsLogic.DefaultCapClips;
     public string ClipsFolder { get; set; } = DefaultClipsFolder();
 
     static string FilePath => Path.Combine(Paths.Root, "settings.json");
@@ -29,10 +29,10 @@ sealed class Settings
             {
                 var s = System.Text.Json.JsonSerializer.Deserialize<Settings>(File.ReadAllText(FilePath))
                     ?? new Settings();
-                if (s.Seconds is not (15 or 20 or 30)) s.Seconds = 20;
+                s.Seconds = SettingsLogic.ClampSeconds(s.Seconds);
                 s.HotkeyVk = Hotkey.Normalize(s.HotkeyVk);
-                if (s.Quality is not ("fast" or "quality")) s.Quality = "fast";
-                if (string.IsNullOrWhiteSpace(s.ClipsFolder)) s.ClipsFolder = DefaultClipsFolder();
+                s.Quality = SettingsLogic.ClampQuality(s.Quality);
+                s.ClipsFolder = SettingsLogic.ClampFolder(s.ClipsFolder, DefaultClipsFolder());
                 return s;
             }
         }

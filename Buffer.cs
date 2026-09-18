@@ -278,7 +278,8 @@ sealed class ReplayBuffer : IDisposable
                 if (!proc.HasExited)
                 {
                     proc.Kill(entireProcessTree: true);
-                    proc.WaitForExit(1500);
+                    if (!proc.WaitForExit(1500))
+                        proc.WaitForExit(5000);
                 }
             }
             catch { }

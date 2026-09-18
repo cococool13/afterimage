@@ -3,7 +3,6 @@ namespace Afterimage;
 static class Theme
 {
     public static readonly Color Canvas = Color.FromArgb(4, 5, 6);
-    public static readonly Color Surface = Color.FromArgb(7, 8, 10);
     public static readonly Color Raised = Color.FromArgb(17, 18, 20);
     public static readonly Color Line = Color.FromArgb(54, 55, 57);
     public static readonly Color Mute = Color.FromArgb(156, 156, 157);

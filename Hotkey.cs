@@ -22,13 +22,15 @@ static class Hotkey
 
     public static bool IsModifier(Keys key) =>
         key is Keys.ShiftKey or Keys.ControlKey or Keys.Menu or Keys.LWin or Keys.RWin
-            or Keys.LShiftKey or Keys.RShiftKey or Keys.LControlKey or Keys.RControlKey;
+            or Keys.LShiftKey or Keys.RShiftKey or Keys.LControlKey or Keys.RControlKey
+            or Keys.LMenu or Keys.RMenu;
 
     public static int SelfCheck()
     {
         if (Normalize(0) != DefaultVk) throw new InvalidOperationException("fail: default");
         if (Normalize(0x78) != 0x78) throw new InvalidOperationException("fail: f9");
         if (IsModifier(Keys.F8)) throw new InvalidOperationException("fail: f8");
+        if (!IsModifier(Keys.LMenu) || !IsModifier(Keys.RMenu)) throw new InvalidOperationException("fail: alt");
         Console.WriteLine("hotkey ok");
         return 0;
     }

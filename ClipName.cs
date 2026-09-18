@@ -28,6 +28,12 @@ public static class ClipName
         Check(b == "Sep 15 2.41 PM (2).mp4", "collision");
         var c = FileName(new DateTime(2026, 1, 2, 9, 5, 0), []);
         Check(c == "Jan 2 9.05 AM.mp4", "morning single-digit");
+        var noon = FileName(new DateTime(2026, 6, 1, 12, 0, 0), []);
+        Check(noon == "Jun 1 12.00 PM.mp4", "noon");
+        var midnight = FileName(new DateTime(2026, 6, 1, 0, 0, 0), []);
+        Check(midnight == "Jun 1 12.00 AM.mp4", "midnight");
+        var chain = FileName(new DateTime(2026, 9, 15, 14, 41, 3), ["Sep 15 2.41 PM.mp4", "Sep 15 2.41 PM (2).mp4"]);
+        Check(chain == "Sep 15 2.41 PM (3).mp4", "collision 3");
         Console.WriteLine("clip-name ok");
         return 0;
     }

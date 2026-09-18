@@ -9,17 +9,29 @@ static class Program
 
     internal static void ReleaseInstance()
     {
+        try { _instance?.ReleaseMutex(); } catch { }
         _instance?.Dispose();
         _instance = null;
         ShowEvent?.Dispose();
         ShowEvent = null;
     }
 
+    static int SelfCheck() =>
+        SegmentPicker.SelfCheck() == 0
+        && ClipName.SelfCheck() == 0
+        && GameWindow.SelfCheck() == 0
+        && Hotkey.SelfCheck() == 0
+        && ClipCap.SelfCheck() == 0
+        && CaptureGraph.SelfCheck() == 0
+        && StatusText.SelfCheck() == 0
+        && SettingsLogic.SelfCheck() == 0
+            ? 0 : 1;
+
     [STAThread]
     static int Main(string[] args)
     {
         if (args.Contains("--self-check", StringComparer.OrdinalIgnoreCase))
-            return SegmentPicker.SelfCheck() == 0 && ClipName.SelfCheck() == 0 && GameWindow.SelfCheck() == 0 && Hotkey.SelfCheck() == 0 && ClipCap.SelfCheck() == 0 && CaptureGraph.SelfCheck() == 0 && StatusText.SelfCheck() == 0 ? 0 : 1;
+            return SelfCheck();
 
         if (args.Any(a => a.Equals("--uninstall", StringComparison.OrdinalIgnoreCase)))
         {
@@ -32,20 +44,32 @@ static class Program
 
         if (Install.TryRelocate()) return 0;
 
-        ShowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowName);
+        if (Admin.IsElevated)
+            Install.KillOtherInstances();
+
         try
         {
-            _instance = new Mutex(true, MutexName, out var created);
-            if (!created)
+            ShowEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShowName);
+            _instance = new Mutex(false, MutexName, out _);
+            try
             {
-                SignalShow();
-                ReleaseInstance();
-                return 0;
+                if (!_instance.WaitOne(Admin.IsElevated ? 3000 : 0))
+                {
+                    SignalShow();
+                    ReleaseInstance();
+                    return 0;
+                }
+            }
+            catch (AbandonedMutexException)
+            {
+                // previous instance crashed; we own the mutex
             }
         }
-        catch (AbandonedMutexException)
+        catch (UnauthorizedAccessException)
         {
-            // previous instance crashed; we own the mutex
+            SignalShow();
+            ReleaseInstance();
+            return 0;
         }
 
         Log.Line("start " + typeof(Program).Assembly.GetName().Version);

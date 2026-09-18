@@ -15,5 +15,6 @@
     <Compile Include="..\ClipCap.cs" Link="ClipCap.cs" />
     <Compile Include="..\CaptureGraph.cs" Link="CaptureGraph.cs" />
     <Compile Include="..\StatusText.cs" Link="StatusText.cs" />
+    <Compile Include="..\SettingsLogic.cs" Link="SettingsLogic.cs" />
   </ItemGroup>
 </Project>

@@ -14,19 +14,21 @@ public static class ClipCap
             .ToList();
         var total = files.Sum(f => f.Length);
         var deleted = 0;
-        while (files.Count > 0 && (files.Count > maxFiles || total > maxBytes))
+        var i = 0;
+        while (i < files.Count && (files.Count > maxFiles || total > maxBytes))
         {
-            var oldest = files[0];
-            files.RemoveAt(0);
-            total -= oldest.Length;
+            var f = files[i];
             try
             {
-                oldest.Delete();
+                var len = f.Length;
+                f.Delete();
+                total -= len;
+                files.RemoveAt(i);
                 deleted++;
             }
             catch
             {
-                total += oldest.Length;
+                i++;
             }
         }
         return deleted;
@@ -44,17 +46,27 @@ public static class ClipCap
                 File.SetLastWriteTimeUtc(path, DateTime.UtcNow.AddMinutes(age));
                 return new FileInfo(path);
             }
+            if (Prune(Path.Combine(dir.FullName, "missing"), 50, 1000) != 0)
+                throw new InvalidOperationException("fail: missing folder");
+            Make("keep.txt", -4, 10);
             Make("a.mp4", -3, 10);
             Make("b.mp4", -2, 10);
             Make("c.mp4", -1, 10);
+            if (Prune(dir.FullName, maxFiles: 0, maxBytes: 10) != 0)
+                throw new InvalidOperationException("fail: invalid cap");
+            if (!File.Exists(Path.Combine(dir.FullName, "a.mp4")))
+                throw new InvalidOperationException("fail: invalid cap deleted");
             var n = Prune(dir.FullName, maxFiles: 2, maxBytes: 10_000);
             if (n != 1) throw new InvalidOperationException("fail: file cap");
             if (File.Exists(Path.Combine(dir.FullName, "a.mp4"))) throw new InvalidOperationException("fail: oldest remains");
             if (!File.Exists(Path.Combine(dir.FullName, "c.mp4"))) throw new InvalidOperationException("fail: newest gone");
+            if (!File.Exists(Path.Combine(dir.FullName, "keep.txt"))) throw new InvalidOperationException("fail: non-mp4");
 
             Make("d.mp4", 0, 50);
             n = Prune(dir.FullName, maxFiles: 50, maxBytes: 55);
             if (n < 1) throw new InvalidOperationException("fail: size cap");
+            n = Prune(dir.FullName, maxFiles: 50, maxBytes: long.MaxValue);
+            if (n != 0) throw new InvalidOperationException("fail: under cap");
             Console.WriteLine("clip-cap ok");
             return 0;
         }

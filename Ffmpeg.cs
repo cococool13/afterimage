@@ -36,7 +36,7 @@ static class Ffmpeg
         foreach (var dir in CandidateDirs())
         {
             var path = Path.Combine(dir, "ffmpeg.exe");
-            if (File.Exists(path)) return path;
+            if (File.Exists(path) && new FileInfo(path).Length > 0) return path;
         }
         return null;
     }

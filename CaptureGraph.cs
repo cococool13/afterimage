@@ -13,7 +13,7 @@ public static class CaptureGraph
             <= 0 => new(labeled, ["[v]"]),
             1 => new(labeled, ["[v]", "0:a:0"]),
             _ => new(
-                labeled + ";[0:a][1:a]amix=inputs=2:duration=first:dropout_transition=0[a]",
+                labeled + ";[0:a]aresample=48000,aformat=channel_layouts=stereo[a0];[1:a]aresample=48000,aformat=channel_layouts=stereo[a1];[a0][a1]amix=inputs=2:duration=first:dropout_transition=0[a]",
                 ["[v]", "[a]"]),
         };
     }
@@ -33,6 +33,7 @@ public static class CaptureGraph
 
         var mic = Build(video, 2);
         Check(mic.Filter.Contains("amix=inputs=2", StringComparison.Ordinal), "amix");
+        Check(mic.Filter.Contains("aresample=48000", StringComparison.Ordinal), "resample");
         Check(mic.Maps is ["[v]", "[a]"], "mic maps");
 
         var already = Build("gfxcapture=hwnd=1[v]", 0);

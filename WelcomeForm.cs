@@ -76,7 +76,7 @@ sealed class WelcomeForm : Form
         Shown += async (_, _) => await Setup();
         FormClosed += (_, _) =>
         {
-            if (!_ready) return;
+            if (!SettingsLogic.PersistOnboarded(_ready)) return;
             _settings.Onboarded = true;
             _settings.Save();
         };
@@ -100,15 +100,19 @@ sealed class WelcomeForm : Form
                 _status.Text = n >= 100 ? "Ready." : $"Downloading… {n}%";
             });
             await _buffer.EnsureFfmpegAsync(CancellationToken.None, progress);
+            if (IsDisposed) return;
             if (!Gpu.HasNvidia())
             {
-                if (IsDisposed) return;
                 _status.Text = "Needs an NVIDIA graphics card.";
                 ReadyButton("Got it");
                 return;
             }
             await Task.Run(() => _buffer.Start());
-            if (IsDisposed) return;
+            if (IsDisposed)
+            {
+                MarkOnboarded();
+                return;
+            }
             _status.Text = "Ready. Start a game, then press " + Hotkey.Label(_settings.HotkeyVk) + ".";
             ReadyButton("Got it");
         }
@@ -122,6 +126,13 @@ sealed class WelcomeForm : Form
         }
     }
 
+    void MarkOnboarded()
+    {
+        _ready = true;
+        _settings.Onboarded = true;
+        _settings.Save();
+    }
+
     void ReadyButton(string text)
     {
         _bar.Style = ProgressBarStyle.Continuous;
@@ -130,7 +141,7 @@ sealed class WelcomeForm : Form
         _done.Text = text;
         _done.BackColor = Theme.Ash;
         _done.ForeColor = Theme.AshText;
-        _ready = true;
+        MarkOnboarded();
     }
 
     void Finish() => Close();

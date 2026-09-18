@@ -16,6 +16,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: 8.0.x
+      - name: Test
+        run: dotnet run --project Afterimage.Tests
       - name: Bundle ffmpeg
         continue-on-error: true
         run: powershell -File scripts/bundle-ffmpeg.ps1
@@ -43,4 +45,5 @@ jobs:
           files: |
             Afterimage.exe
             Afterimage.zip
+          fail_on_unmatched_files: true
           generate_release_notes: true

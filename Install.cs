@@ -28,7 +28,8 @@ static class Install
         try
         {
             Directory.CreateDirectory(Dir);
-            File.Copy(src, Exe, overwrite: true);
+            if (File.Exists(Exe)) KillOtherInstances();
+            CopyReplace(src, Exe);
             CopyCompanion(src, "ffmpeg.exe");
             Shortcuts.Write(Exe);
             Register(Exe);
@@ -43,13 +44,34 @@ static class Install
         }
     }
 
+    static void CopyReplace(string src, string dest)
+    {
+        for (var i = 0; ; i++)
+        {
+            try
+            {
+                File.Copy(src, dest, overwrite: true);
+                return;
+            }
+            catch (IOException) when (i < 8)
+            {
+                Thread.Sleep(100);
+            }
+        }
+    }
+
     static void CopyCompanion(string srcExe, string name)
     {
-        var dir = Path.GetDirectoryName(srcExe);
-        if (string.IsNullOrEmpty(dir)) return;
-        var from = Path.Combine(dir, name);
-        if (!File.Exists(from)) return;
-        File.Copy(from, Path.Combine(Dir, name), overwrite: true);
+        var dest = Path.Combine(Dir, name);
+        foreach (var dir in new[] { Path.GetDirectoryName(srcExe), AppContext.BaseDirectory })
+        {
+            if (string.IsNullOrEmpty(dir)) continue;
+            var from = Path.Combine(dir, name);
+            if (!File.Exists(from) || new FileInfo(from).Length == 0) continue;
+            if (string.Equals(from, dest, StringComparison.OrdinalIgnoreCase)) return;
+            CopyReplace(from, dest);
+            return;
+        }
     }
 
     public static void Register(string? exe = null)
@@ -100,7 +122,7 @@ static class Install
 
     public static void Remove()
     {
-        KillOthers();
+        KillOtherInstances();
         try
         {
             using var run = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true);
@@ -124,7 +146,7 @@ static class Install
         else TryDeleteTree(Dir);
     }
 
-    static void KillOthers()
+    internal static void KillOtherInstances()
     {
         foreach (var p in Process.GetProcessesByName("Afterimage"))
         {

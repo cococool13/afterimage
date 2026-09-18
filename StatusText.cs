@@ -22,9 +22,12 @@ public static class StatusText
     public static int SelfCheck()
     {
         Check(Line(false, "waiting") == "Waiting for a game", "waiting");
+        Check(Line(false, "ready") == "Waiting for a game", "ready");
         Check(Line(true, "waiting", "hl2") == "Recording · hl2", "recording");
         Check(Line(false, "no game") == "No game open", "no game");
         Check(Line(false, "need NVIDIA") == "Needs NVIDIA", "nvidia");
+        Check(Line(false, "paused") == "Paused", "paused");
+        Check(Line(false, "need FFmpeg") == "Setup didn't finish", "ffmpeg");
         Console.WriteLine("status-text ok");
         return 0;
     }

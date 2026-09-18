@@ -23,7 +23,6 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Remove="Afterimage.Tests/**" />
-    <Compile Remove="Clip.Tests/**" />
     <Compile Remove="site/**" />
     <Compile Remove="tools/**" />
   </ItemGroup>
