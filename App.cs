@@ -22,7 +22,6 @@ sealed class App : ApplicationContext
 
     public App()
     {
-        _ui = SynchronizationContext.Current ?? new SynchronizationContext();
         _buffer = new ReplayBuffer(_settings);
         Shortcuts.Write();
         _icon = LoadIcon();
@@ -37,6 +36,13 @@ sealed class App : ApplicationContext
             });
         _rightMenu.Items.Add("Quit", null, (_, _) => ExitThread());
 
+        // ContextMenuStrip installs WindowsFormsSynchronizationContext. Capturing
+        // before any Control exists falls back to the default context, which posts
+        // WelcomeForm onto a thread-pool thread (blank window, Not Responding).
+        _ui = SynchronizationContext.Current as WindowsFormsSynchronizationContext
+            ?? new WindowsFormsSynchronizationContext();
+        SynchronizationContext.SetSynchronizationContext(_ui);
+
         _tray = new NotifyIcon
         {
             Icon = _icon,
@@ -49,19 +55,22 @@ sealed class App : ApplicationContext
         _hook = Native.SetWindowsHookEx(WhKeyboardLl, _hookProc, Native.GetModuleHandle(null), 0);
         if (_hook == IntPtr.Zero) Log.Line("hotkey hook failed");
 
-        _ = ReadyAsync();
+        EventHandler? once = null;
+        once = (_, _) =>
+        {
+            Application.Idle -= once;
+            _ = ReadyAsync();
+        };
+        Application.Idle += once;
     }
 
     async Task ReadyAsync()
     {
         if (!_settings.Onboarded)
         {
-            _ui.Post(_ =>
-            {
-                var welcome = new WelcomeForm(_settings, _buffer);
-                welcome.FormClosed += (_, _) => SetTip();
-                welcome.Show();
-            }, null);
+            var welcome = new WelcomeForm(_settings, _buffer);
+            welcome.FormClosed += (_, _) => SetTip();
+            welcome.Show();
             return;
         }
 
@@ -69,25 +78,24 @@ sealed class App : ApplicationContext
         {
             SetTip("getting FFmpeg");
             await _buffer.EnsureFfmpegAsync(CancellationToken.None);
-            _ui.Post(_ =>
-            {
-                try
-                {
-                    _buffer.Start();
-                    SetTip();
-                }
-                catch (Exception ex)
-                {
-                    Log.Line(ex.ToString());
-                    SetTip("failed to start");
-                    if (_settings.PlaySound) Tick.Fail();
-                }
-            }, null);
         }
         catch (Exception ex)
         {
             Log.Line(ex.ToString());
-            _ui.Post(_ => SetTip("need FFmpeg"), null);
+            SetTip("need FFmpeg");
+            return;
+        }
+
+        try
+        {
+            await Task.Run(() => _buffer.Start());
+            SetTip();
+        }
+        catch (Exception ex)
+        {
+            Log.Line(ex.ToString());
+            SetTip("failed to start");
+            if (_settings.PlaySound) Tick.Fail();
         }
     }
 

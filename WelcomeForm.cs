@@ -72,7 +72,7 @@ sealed class WelcomeForm : Form
         _done.Click += (_, _) => Finish();
         Controls.Add(_done);
 
-        Load += async (_, _) => await Setup();
+        Shown += async (_, _) => await Setup();
         FormClosed += (_, _) =>
         {
             _settings.Onboarded = true;
@@ -98,7 +98,7 @@ sealed class WelcomeForm : Form
                 _status.Text = n >= 100 ? "Ready." : $"Downloading encoder… {n}%";
             });
             await _buffer.EnsureFfmpegAsync(CancellationToken.None, progress);
-            _buffer.Start();
+            await Task.Run(() => _buffer.Start());
             if (IsDisposed) return;
             _status.Text = "Ready. Start a game, then press " + Hotkey.Label(_settings.HotkeyVk) + ".";
             _bar.Style = ProgressBarStyle.Continuous;
